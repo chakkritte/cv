@@ -1,0 +1,258 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Resume</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <style>
+      @media print {
+        @page {
+          size: auto;
+          margin: 0;
+        }
+      }
+      body {
+        font-family: 'Roboto', sans-serif;
+        font-size: 14px;
+        padding: 2em;
+      }
+      h1, h2, p {
+        margin: 0;
+      }
+      a:link, a:visited {
+        color: #337ab7;
+        text-decoration: none;
+      }
+      .grid-container {
+        display: grid;
+        grid-template-columns: 1fr 7fr;
+      }
+      .grid-content {
+        grid-column-start: 2;
+        margin-bottom: 1em;
+      }
+      .grid-header {
+        grid-column-start: 1;
+        text-align: center;
+        font-weight: normal;
+        text-transform: uppercase;
+        font-size: 14px;
+        padding: 0 .5em;
+        margin-bottom: 1em;
+      }
+      .grid-header::first-letter {
+        font-size: 18px;
+      }
+      .inner-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .featured {
+        font-weight: bold;
+      }
+      .time {
+        font-style: italic;
+      }
+      .brief-description {
+        font-style: italic;
+      }
+      .topic {
+        font-size: 12px;
+      }
+      .topic::before {
+        content: "\2713";
+      }
+      .header {
+        padding-top: 2em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="grid-container">
+      <div class="grid-content header">
+        <h1>Chakkrit Termritthikun (PhD)</h1>
+        <h3>Lecturer at School of Renewable Energy and Smart Grid Technology (SGtech),
+            Naresuan University, Phitsanulok, Thailand, 65000
+            </h3>
+        <p><a href="https://github.com/chakkritte">github.com/chakkritte</a></p>
+        <p><a href="mailto:chakkritt60@nu.ac.th">chakkritt60@nu.ac.th</a></p>
+        <p><a href="https://scholar.google.com/citations?hl=en&user=C4vf174AAAAJ&view_op=list_works&sortby=pubdate">Google scholar</a></p>
+      </div>
+
+      <h2 class="grid-header">Education</h2>
+
+      <div class="grid-content">
+        <p><span class="featured">Naresuan university, Thailand</span>, <span class="time">2017 - 2021</span></p>
+        <p class="brief-description">Ph.D (Computer Engineering)</p>
+        <p class="brief-description">Advisor: Professor Dr Paisarn Muneesawang</p>
+        <p class="brief-description">Co-Advisor: Dr Ivan Lee (University of South Australia)</p>
+        <p class="brief-description">Dissertation: Development of deep learning neural network for on-device mobile processing</p>
+      </div>
+
+
+      <div class="grid-content">
+        <p><span class="featured">Naresuan university, Thailand</span>, <span class="time">2014 – 2017</span></p>
+        <p class="brief-description">M.Eng. (Computer Engineering)</p>
+      </div>
+
+      <div class="grid-content">
+        <p><span class="featured">Naresuan university, Thailand</span>, <span class="time">2013</span></p>
+        <p class="brief-description">B.Eng. (Computer Engineering)</p>
+      </div>
+
+
+      <h2 class="grid-header">Scholarships</h2>
+
+      <div class="grid-content">
+        <p>The Royal Golden Jubilee (RGJ) scholarships to PhD in Computer Engineering at Naresuan university from Thailand Research Fund.</p>
+      </div>
+
+
+      <h2 class="grid-header">Experience</h2>
+
+      <div class="grid-content">
+        <p><span class="featured">Visiting student research / STEM, University of South Australia, Australia</span>, <span class="time">2018 - 2020</span></p>
+        <p class="brief-description">A Fast-Neural Architecture Search using an Evolutionary Algorithm</p>
+        </div>
+
+    <div class="grid-content">
+            <p><span class="featured">Senior Developer / Fiber One Public Co., Ltd, Bangkok, Thailand</span>, <span class="time">2016 - 2017</span></p>
+            <p class="brief-description">Developed on-device facial verification using deep learning, applied to an automatic door (Autodoor) as a replacement for the fingerprint door lock</p>
+            </div>
+    
+    <div class="grid-content">
+        <p><span class="featured">Teacher Assistant / Naresuan University, Thailand</span>, <span class="time">2012 - 2013</span></p>
+        <p class="brief-description">Computer Programming</p>
+        <p class="brief-description">Advanced Computer Programming</p>
+        <p class="brief-description">Computer and Data Communications</p>
+        </div>
+
+      <h2 class="grid-header">Technical Skills</h2>
+
+      <div class="grid-content">
+        <p>Most experienced with <span class="featured">Python, Linux, C++, Java, PHP, SQL,</span> and <span class="featured">Git</span></p>
+        </div>
+
+        <div class="grid-content inner-grid">
+            <div class="topic">Android programming</div>
+            <div class="topic">Linux server</div>
+            <div class="topic">Machine learning</div>
+            <div class="topic">Computer vision</div>
+            <div class="topic">Convolutional Neural Network</div>
+            <div class="topic">Deep learning (PyTorch, Caffe, Torch7, Keras, Tensorflow)</div>
+            <div class="topic">Supercomputer and High-Performance Computing</div>
+            <div class="topic">Docker and Container</div>
+            <div class="topic">Neural Architecture Search</div>
+          </div>
+
+      <h2 class="grid-header">Research project</h2>
+
+      <div class="grid-content">
+        <p><span class="featured">Automated snail detection and tracking based-on YOLOv3</span>, <span class="time">2020</span></p>
+      </div>
+      
+      <div class="grid-content">
+        <p><span class="featured">Low complexity machine learning algorithm for snail detection and tracking</span>, <span class="time">2019</span></p>
+      </div>
+
+      <div class="grid-content">
+        <p><span class="featured">Thai Food Image Recognition using Deep neural networks on Smartphone</span>, <span class="time">2015 – 2016</span></p>
+      </div>
+
+      <div class="grid-content">
+        <p><span class="featured">VHF Radio Frequency Detection System with Remote Control over Internet Network</span>, <span class="time">2014 – 2015</span></p>
+      </div>
+
+      <div class="grid-content">
+        <p><span class="featured">Tracking and time approximation system for EV via Smart phone on network 3G</span>, <span class="time">2013</span></p>
+      </div>
+
+      <h2 class="grid-header">Publications (Conferences)</h2>
+
+      <div class="grid-content">
+        <p class="brief-description" >Termritthikun C, Jamtsho Y, Lee I, Morien R, Muneesawang P. Towards a New Ultra-High-Speed Search Algorithm for Convolutional Neural Networks, In KSII The 11th International Conference on Internet (ICONI), Hanoi, December 2019.</p>
+      </div>
+
+      <div class="grid-content">
+        <p class="brief-description" >Termritthikun C, Kanprachar S. Accuracy improvement of Thai food image recognition using deep convolutional neural networks. In Electrical Engineering Congress (iEECON), 2017 International 2017 Mar 8 (pp. 1-4). IEEE.</p>
+      </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Tangkawanit S, Termritthikun C, Kanprachar S. Electric vehicle tracking and notification application for smart phones. In Electrical Engineering Congress (iEECON), 2014 International 2014 Mar 19 (pp. 1-4). IEEE.</p>
+      </div>
+
+      <h2 class="grid-header">Publications (Journals)</h2>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Jamtsho Y, Muneesawang P, Zhao J, Lee I. Evolutionary neural architecture search based on efficient CNN models population for image classification. 2021. [submitted]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Jamtsho Y, Ieamsaard J, Muneesawang P, Lee I. EEEA-Net: An Early Exit Evolutionary Neural Architecture Search. Engineering Applications of Artificial Intelligence. 2021. [ISI]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Jamtsho Y, Muneesawang P. An improved residual network model for image recognition using a combination of snapshot ensembles and the cutout technique. Multimedia Tools and Applications. 2020 Jan 1;79(1-2):1475-95. [ISI]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Muneesawang P. NU-LiteNet: Mobile Landmark Recognition using Convolutional Neural Networks. ECTI Transactions on Computer and Information Technology (ECTI-CIT). 2019 Oct 9;13(1):71-8. [Scopus]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Jamtsho Y, Muneesawang P. On-device facial verification using NUF-Net model of deep learning. Engineering Applications of Artificial Intelligence. 2019 Oct 1;85:579-89. [ISI]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Kanprachar S. NU-ResNet: Deep Residual Networks for Thai Food Image Recognition. Journal of Telecommunication, Electronic and Computer Engineering (JTEC). 2018 Jan 29;10(1-4):29-33. [Scopus]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikun C, Muneesawang P, Kanprachar S. NU-InNet: Thai Food Image Recognition Using Convolutional Neural Networks on Smartphone. Journal of Telecommunication, Electronic and Computer Engineering (JTEC). 2017 Jun 1;9(2-6):63-7. [Scopus]
+       </p>
+     </div>
+
+      <div class="grid-content">
+        <p class="brief-description">Termritthikuna C, Tangkawanit S, Kanprachar S. DATA AND ENERGY USAGE REDUCTION FOR LIVE STREAMING ON SMART PHONE USING FUZZY LOGIC. JURNAL TEKNOLOGI. 2016 Jan 1;78(5-9):35-40. [Scopus]
+       </p>
+     </div>
+
+      <div class="grid-content">
+         <p class="brief-description">Settha Thangkawanit, Wanchaleam Chansong, Witsawa Namwong, Chakkrit Termritthikun, Kritsana Wataniyanon, and Suwit Kiravittaya., Arrival time approximation and tracking of NU-EV via wireless network. Naresuan University Engineering Journal, Vol.8(21-29). [TCI]
+        </p>
+      </div>
+
+      <h2 class="grid-header">Publications (Poster)</h2>
+
+      <div class="grid-content">
+        <p class="brief-description">Development of deep learning neural network for on-device mobile processing at the 2021 National RGJ and RRI conferences, Bangkok, Thailand
+        </p>
+      </div>
+
+      <div class="grid-content">
+        <p class="brief-description">NU-EA-Net: On-device Convolutional Neural Networks Model using Evolutionary Algorithm at NVIDIA’s GPU Technology Conference (GTC 2019), San Jose McEnery Convention Center, San Jose, CA, USA
+        </p>
+      </div>
+
+      <div class="grid-content">
+        <p class="brief-description">NUF-Net: On-device Facial Recognition using Convolutional Neural Networks at NVIDIA’s GPU Technology Conference (GTC 2018), San Jose McEnery Convention Center, San Jose, CA, USA
+        </p>
+      </div>
+
+
+      <div class="grid-content">
+        <p class="brief-description">NU-LiteNet: Mobile Landmark Recognition Using Convolutional Neural Networks at NVIDIA’s GPU Technology Conference (GTC 2017), San Jose McEnery Convention Center, San Jose, CA, USA
+        </p>
+      </div>
+
+
+
+    </div>
+  </body>
+</html>
