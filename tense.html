@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verb Tenses in a Research Paper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #073B4C;
+        }
+        :root {
+            --color-text: #073B4C;
+            --color-primary: #118AB2;
+            --color-secondary: #06D6A0;
+            --color-accent1: #FFD166;
+            --color-accent2: #FF6B6B;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--color-primary);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .tense-key {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 1rem;
+            font-size: 0.875rem;
+        }
+        .tense-key span {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            border-radius: 0.25rem;
+        }
+        .flow-box {
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            background-color: #ffffff;
+            font-weight: 600;
+        }
+        .flow-arrow {
+            color: var(--color-primary);
+            font-size: 2rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">Mastering Tense in Your Research Paper</h1>
+            <h2 class="text-xl md:text-2xl font-light text-gray-600">A Visual Guide to Academic Writing</h2>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 class="text-2xl font-bold mb-4">Why Tense Matters</h3>
+            <p class="text-lg leading-relaxed mb-4">In academic writing, verb tense isn't just about grammar; it's a tool that signals context to your reader. The tense you choose tells them whether you are stating an established fact, reporting a past finding, or proposing future work. Using tenses correctly and consistently builds credibility and makes your argument clear.</p>
+            <div class="flex flex-wrap">
+                <div class="tense-key"><span style="background-color: var(--color-secondary);"></span>Present Tense</div>
+                <div class="tense-key"><span style="background-color: var(--color-accent1);"></span>Past Tense</div>
+                <div class="tense-key"><span style="background-color: var(--color-accent2);"></span>Present Perfect</div>
+            </div>
+        </div>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <h3 class="text-2xl font-bold mb-3">1. Introduction</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">Your introduction sets the stage. You'll move from general background to the specific problem your paper addresses.</p>
+                <div class="chart-container flex-grow">
+                    <canvas id="introChart"></canvas>
+                </div>
+                <p class="text-gray-700 leading-relaxed mt-4">This chart shows a typical mix. Use the <strong style="color: var(--color-secondary);">Present Tense</strong> to state the problem or general facts. Use the <strong style="color: var(--color-accent2);">Present Perfect</strong> to highlight gaps in existing research ("Researchers *have focused* on X, but Y *has not been* studied").</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <h3 class="text-2xl font-bold mb-3">2. Literature Review</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">Here, you review previous work. The tense you use depends on what you're describing.</p>
+                <div class="chart-container flex-grow">
+                    <canvas id="litReviewChart"></canvas>
+                </div>
+                <p class="text-gray-700 leading-relaxed mt-4">Use the <strong style="color: var(--color-accent1);">Past Tense</strong> to cite specific, completed studies (e.g., "Smith (2020) *found*..."). Use the <strong style="color: var(--color-secondary);">Present Tense</strong> to discuss established theories or knowledge (e.g., "This theory *states*...").</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <h3 class="text-2xl font-bold mb-3">3. Methods</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">This section is a straightforward report of what you *did* to conduct your research.</p>
+                <div class="chart-container flex-grow">
+                    <canvas id="methodsChart"></canvas>
+                </div>
+                <p class="text-gray-700 leading-relaxed mt-4">The rule is simple: the <strong style="color: var(--color-accent1);">Past Tense</strong> is dominant. You are describing actions you completed in the past (e.g., "We *collected* data..." or "The sample *was selected*...").</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <h3 class="text-2xl font-bold mb-3">4. Results</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">Like the Methods section, the Results section reports on what you *found* from your experiments.</p>
+                <div class="chart-container flex-grow">
+                    <canvas id="resultsChart"></canvas>
+                </div>
+                <p class="text-gray-700 leading-relaxed mt-4">The <strong style="color: var(--color-accent1);">Past Tense</strong> is used to present your findings (e.g., "The data *showed* a correlation..."). You may use the <strong style="color: var(--color-secondary);">Present Tense</strong> only to refer to figures or tables (e.g., "Table 1 *shows*...").</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <h3 class="text-2xl font-bold mb-3">5. Discussion</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">This is where you interpret your findings and connect them back to the wider field. This requires a mix of tenses.</p>
+                <div class="chart-container flex-grow">
+                    <canvas id="discussionChart"></canvas>
+                </div>
+                <p class="text-gray-700 leading-relaxed mt-4">This chart shows the balance. Use the <strong style="color: var(--color-secondary);">Present Tense</strong> to interpret your results and state implications ("This *suggests*..."). Use the <strong style="color: var(--color-accent1);">Past Tense</strong> to compare your findings to specific past studies ("Our results *differed* from Smith (2020)...").</p>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <h3 class="text-2xl font-bold mb-3">6. Conclusion</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">Your conclusion summarizes the paper's main points and highlights its significance.</p>
+                <div class="chart-container flex-grow">
+                    <canvas id="conclusionChart"></canvas>
+                </div>
+                <p class="text-gray-700 leading-relaxed mt-4">The <strong style="color: var(--color-secondary);">Present Tense</strong> is strong here, used to state the overall conclusions and implications. You'll use the <strong style="color: var(--color-accent1);">Past Tense</strong> to briefly restate your key findings, and may use the <strong style="color: var(--color-primary); opacity: 0.7;">Future Tense</strong> for recommendations.</p>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2 lg:col-span-3">
+                <h3 class="text-2xl font-bold mb-6 text-center">Tense Flow Through Your Paper</h3>
+                <p class="text-gray-700 leading-relaxed mb-8 text-center max-w-3xl mx-auto">Think of your paper as a journey. You start with the present context, move into the past to describe your work, and return to the present to explain what it all means.</p>
+                <div class="flex flex-col md:flex-row justify-around items-center space-y-4 md:space-y-0 md:space-x-4">
+                    
+                    <div class="text-center">
+                        <div class="flow-box rounded-lg p-4 w-48">
+                            Intro & Lit Review
+                        </div>
+                        <div class="font-semibold mt-2" style="color: var(--color-secondary);">PRESENT & PERFECT</div>
+                        <p class="text-sm text-gray-600">(Setting the Stage)</p>
+                    </div>
+                    
+                    <div class="flow-arrow rotate-90 md:rotate-0">&rarr;</div>
+                    
+                    <div class="text-center">
+                        <div class="flow-box rounded-lg p-4 w-48">
+                            Methods & Results
+                        </div>
+                        <div class="font-semibold mt-2" style="color: var(--color-accent1);">PAST</div>
+                        <p class="text-sm text-gray-600">(Reporting Your Work)</p>
+                    </div>
+
+                    <div class="flow-arrow rotate-90 md:rotate-0">&rarr;</div>
+
+                    <div class="text-center">
+                        <div class="flow-box rounded-lg p-4 w-48">
+                            Discussion & Conclusion
+                        </div>
+                        <div class="font-semibold mt-2" style="color: var(--color-secondary);">PRESENT & FUTURE</div>
+                        <p class="text-sm text-gray-600">(Stating Implications)</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="text-center mt-12 py-6 border-t border-gray-200">
+            <p class="text-gray-600">This infographic provides general guidelines. Always check the specific style guide for your field or journal.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const wrapLabel = (str, maxLen = 16) => {
+                if (str.length <= maxLen) {
+                    return str;
+                }
+                const words = str.split(' ');
+                let lines = [];
+                let currentLine = '';
+                for (const word of words) {
+                    if ((currentLine + word).length > maxLen && currentLine.length > 0) {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        currentLine = (currentLine + ' ' + word).trim();
+                    }
+                }
+                if (currentLine.length > 0) {
+                    lines.push(currentLine);
+                }
+                return lines;
+            };
+            
+            const requiredTooltipConfig = {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const item = tooltipItems[0];
+                                let label = item.chart.data.labels[item.dataIndex];
+                                if (Array.isArray(label)) {
+                                  return label.join(' ');
+                                } else {
+                                  return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            const chartColors = ['#06D6A0', '#FFD166', '#FF6B6B', '#118AB2'];
+
+            new Chart(document.getElementById('introChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present Tense', 'Present Perfect', 'Past/Future'],
+                    datasets: [{
+                        data: [60, 30, 10],
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    ...requiredTooltipConfig
+                }
+            });
+
+            new Chart(document.getElementById('litReviewChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Citing Specific Study', 'Stating General Knowledge'],
+                    datasets: [{
+                        label: 'Past Tense',
+                        data: [85, 10],
+                        backgroundColor: chartColors[1]
+                    }, {
+                        label: 'Present Tense',
+                        data: [15, 90],
+                        backgroundColor: chartColors[0]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, max: 100, ticks: { callback: value => value + '%' } }
+                    },
+                    plugins: {
+                        ...requiredTooltipConfig.plugins,
+                        tooltip: {
+                            ...requiredTooltipConfig.plugins.tooltip,
+                            callbacks: {
+                                ...requiredTooltipConfig.plugins.tooltip.callbacks,
+                                label: (context) => `${context.dataset.label}: ${context.raw}%`
+                            }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('methodsChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Past Tense', 'Other (e.g., Present)'],
+                    datasets: [{
+                        data: [95, 5],
+                        backgroundColor: [chartColors[1], '#E5E7EB']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    ...requiredTooltipConfig
+                }
+            });
+
+            new Chart(document.getElementById('resultsChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Past Tense', 'Present (for Tables/Figures)'],
+                    datasets: [{
+                        data: [90, 10],
+                        backgroundColor: [chartColors[1], chartColors[0]]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    ...requiredTooltipConfig
+                }
+            });
+
+            new Chart(document.getElementById('discussionChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Interpret Results (Present)', 'Compare to Past (Past)', 'State Implications (Present)', 'Future Work (Future)'],
+                    datasets: [{
+                        label: 'Emphasis in Discussion',
+                        data: [9, 6, 8, 5],
+                        backgroundColor: 'rgba(6, 214, 160, 0.2)',
+                        borderColor: 'rgba(6, 214, 160, 1)',
+                        pointBackgroundColor: 'rgba(6, 214, 160, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        ...requiredTooltipConfig.plugins,
+                        tooltip: {
+                            callbacks: {
+                                title: (tooltipItems) => tooltipItems[0].label
+                            }
+                        }
+                    }
+                }
+            });
+            
+            new Chart(document.getElementById('conclusionChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Typical Tense Mix'],
+                    datasets: [{
+                        label: 'Present Tense',
+                        data: [60],
+                        backgroundColor: chartColors[0]
+                    }, {
+                        label: 'Past Tense',
+                        data: [25],
+                        backgroundColor: chartColors[1]
+                    }, {
+                        label: 'Future/Modal',
+                        data: [15],
+                        backgroundColor: 'rgba(17, 138, 178, 0.7)'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: value => value + '%' } },
+                        y: { stacked: true }
+                    },
+                    plugins: {
+                        ...requiredTooltipConfig.plugins,
+                        tooltip: {
+                            ...requiredTooltipConfig.plugins.tooltip,
+                            callbacks: {
+                                ...requiredTooltipConfig.plugins.tooltip.callbacks,
+                                title: () => 'Conclusion Tense Mix',
+                                label: (context) => `${context.dataset.label}: ${context.raw}%`
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
