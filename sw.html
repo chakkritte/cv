@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zen Breathe</title>
+    <title>Zen Breathe - Pro</title>
     <style>
         :root {
             --bg-color: #050505;
@@ -20,45 +20,49 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: center; /* จัดให้อยู่ตรงกลางหน้าจอ */
+            gap: 60px; /* ระยะห่างระหว่างวงกลมกับปุ่ม (ปรับให้ปุ่มสูงขึ้น) */
             height: 100vh;
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
         }
 
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            width: 100%;
-        }
-
         /* วงกลมหลัก */
         .breathe-circle {
-            width: 150px;
-            height: 150px;
-            background: radial-gradient(circle, rgba(0,229,255,0.2) 0%, rgba(0,229,255,0) 70%);
-            border: 2px solid rgba(0, 229, 255, 0.5);
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle, rgba(0,229,255,0.15) 0%, rgba(0,229,255,0) 70%);
+            border: 2px solid rgba(0, 229, 255, 0.4);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 40px rgba(0, 229, 255, 0.2);
-            /* แอนิเมชันที่นุ่มนวลที่สุด */
-            transition: transform 4s ease-in-out, box-shadow 4s ease-in-out, border-color 4s ease-in-out;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.1);
+            transition: transform 4s ease-in-out, box-shadow 4s ease-in-out, border-color 4s ease-in-out, background 4s ease-in-out;
             position: relative;
         }
 
+        .instruction-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
         .instruction-text {
-            position: absolute;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 300;
             letter-spacing: 2px;
             text-align: center;
-            opacity: 0.8;
+            opacity: 0.9;
+        }
+
+        .timer-text {
+            font-size: 2.5rem;
+            font-weight: 200;
+            opacity: 0; /* ซ่อนไว้ก่อนตอนเริ่ม */
             transition: opacity 0.5s ease;
         }
 
@@ -67,34 +71,33 @@
             transform: scale(1.8);
             box-shadow: 0 0 80px rgba(0, 229, 255, 0.6);
             border-color: rgba(0, 229, 255, 1);
+            background: radial-gradient(circle, rgba(0,229,255,0.25) 0%, rgba(0,229,255,0) 70%);
         }
 
         /* State: หายใจออก */
         .exhale {
             transform: scale(1);
-            box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.1);
             border-color: rgba(0, 229, 255, 0.3);
-        }
-
-        .controls {
-            margin-bottom: 50px;
+            background: radial-gradient(circle, rgba(0,229,255,0.1) 0%, rgba(0,229,255,0) 70%);
         }
 
         button {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 12px 32px;
-            font-size: 1rem;
-            border-radius: 30px;
+            padding: 14px 40px;
+            font-size: 1.1rem;
+            border-radius: 40px;
             cursor: pointer;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
             letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
         button:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
         }
 
         button:active {
@@ -104,70 +107,80 @@
 </head>
 <body>
 
-    <div class="container">
-        <div class="breathe-circle" id="circle">
+    <div class="breathe-circle" id="circle">
+        <div class="instruction-container">
             <div class="instruction-text" id="text">พร้อมไหม?</div>
+            <div class="timer-text" id="timer">4</div>
         </div>
     </div>
 
-    <div class="controls">
-        <button id="startBtn">เริ่มฝึกหายใจ</button>
-    </div>
+    <button id="startBtn">เริ่มฝึกหายใจ</button>
 
     <script>
         const circle = document.getElementById('circle');
         const text = document.getElementById('text');
+        const timerText = document.getElementById('timer');
         const startBtn = document.getElementById('startBtn');
 
         let isBreathing = false;
-        let breatheInterval;
-        const totalTime = 8000; // รอบละ 8 วินาที
-        const breatheTime = 4000; // เข้า 4 วิ, ออก 4 วิ
+        let timerInterval;
+        let timeLeft = 4;
+        let currentPhase = 'idle'; // 'inhale' หรือ 'exhale'
 
-        // ระบบเสียง (Web Audio API) สำหรับทำเสียง Ambient ผ่อนคลาย
+        // Web Audio API
         let audioCtx;
         let oscillator;
         let gainNode;
 
         function initAudio() {
             if (!audioCtx) {
-                // สร้าง Context เสียง
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
                 
+                // เสียงคลื่นความถี่ต่ำ (Ambient Sound)
                 oscillator = audioCtx.createOscillator();
                 gainNode = audioCtx.createGain();
-
-                // ใช้คลื่น Sine ความถี่ 174 Hz (Solfeggio frequency สำหรับความผ่อนคลาย)
                 oscillator.type = 'sine';
                 oscillator.frequency.value = 174; 
-
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-
-                // เริ่มต้นแบบไม่มีเสียง
                 gainNode.gain.value = 0; 
                 oscillator.start();
             }
-            // ป้องกันเบราว์เซอร์บล็อกเสียง
             if(audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
         }
 
-        function playInhaleSound() {
+        // ฟังก์ชันสร้างเสียง "ติ๊ก" เบาๆ กำกับจังหวะวินาที
+        function playTickSound() {
             if (!audioCtx) return;
-            // ค่อยๆ เพิ่มความดังของเสียงใน 2 วินาที (Fade in)
-            gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 1.5);
-            // ปรับเสียงสูงขึ้นเล็กน้อยให้รู้สึกถึงการ "ขยายตัว"
+            const tickOsc = audioCtx.createOscillator();
+            const tickGain = audioCtx.createGain();
+            
+            tickOsc.connect(tickGain);
+            tickGain.connect(audioCtx.destination);
+            
+            tickOsc.type = 'sine';
+            tickOsc.frequency.setValueAtTime(600, audioCtx.currentTime); // เสียงใสๆ
+            
+            // ตั้งค่าความดังให้ดังนิดนึงแล้วหายไปอย่างรวดเร็ว (Pop/Tick effect)
+            tickGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            tickGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            
+            tickOsc.start(audioCtx.currentTime);
+            tickOsc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playInhaleAmbient() {
+            if (!audioCtx) return;
+            gainNode.gain.setTargetAtTime(0.25, audioCtx.currentTime, 1.5);
             oscillator.frequency.setTargetAtTime(184, audioCtx.currentTime, 2);
         }
 
-        function playExhaleSound() {
+        function playExhaleAmbient() {
             if (!audioCtx) return;
-            // ค่อยๆ ลดความดังของเสียงลง (Fade out)
             gainNode.gain.setTargetAtTime(0.05, audioCtx.currentTime, 1.5);
-            // ปรับเสียงต่ำลงให้รู้สึก "ปล่อยวาง"
             oscillator.frequency.setTargetAtTime(174, audioCtx.currentTime, 2);
         }
 
@@ -177,39 +190,70 @@
             }
         }
 
-        function breatheAnimation() {
+        function switchPhase() {
             if (!isBreathing) return;
 
-            // หายใจเข้า
-            text.innerText = 'หายใจเข้า...';
-            circle.className = 'breathe-circle inhale';
-            playInhaleSound();
-
-            // หายใจออก (หลังจากผ่านไป 4 วินาที)
-            setTimeout(() => {
-                if (!isBreathing) return;
+            if (currentPhase === 'inhale') {
+                currentPhase = 'exhale';
                 text.innerText = 'หายใจออก...';
                 circle.className = 'breathe-circle exhale';
-                playExhaleSound();
-            }, breatheTime);
+                playExhaleAmbient();
+            } else {
+                currentPhase = 'inhale';
+                text.innerText = 'หายใจเข้า...';
+                circle.className = 'breathe-circle inhale';
+                playInhaleAmbient();
+            }
+        }
+
+        function timerLoop() {
+            if (!isBreathing) return;
+
+            // แสดงตัวเลขและเล่นเสียงติ๊ก
+            timerText.innerText = timeLeft;
+            playTickSound();
+
+            timeLeft--;
+
+            // เมื่อนับถึง 0 ให้สลับจังหวะหายใจและรีเซ็ตเวลา
+            if (timeLeft < 0) {
+                timeLeft = 3; // รีเซ็ตเป็น 3 เพราะมันจะแสดง 4 ในลูปถัดไปทันที
+                switchPhase();
+                timerText.innerText = 4;
+                playTickSound();
+            }
         }
 
         function toggleBreathe() {
             if (isBreathing) {
                 // หยุดการทำงาน
                 isBreathing = false;
-                clearInterval(breatheInterval);
+                clearInterval(timerInterval);
                 circle.className = 'breathe-circle';
                 text.innerText = 'พร้อมไหม?';
+                timerText.style.opacity = '0'; // ซ่อนตัวเลข
                 startBtn.innerText = 'เริ่มฝึกหายใจ';
+                currentPhase = 'idle';
                 stopAudio();
             } else {
                 // เริ่มการทำงาน
-                initAudio(); // Initialize เสียงตอนที่ User กดปุ่ม (ตามกฎของ Browser)
+                initAudio(); 
                 isBreathing = true;
                 startBtn.innerText = 'หยุด';
-                breatheAnimation(); // ทำรอบแรกทันที
-                breatheInterval = setInterval(breatheAnimation, totalTime); // วนลูปทุกๆ 8 วินาที
+                timerText.style.opacity = '1'; // แสดงตัวเลข
+                
+                // ตั้งค่าเริ่มต้นรอบแรก
+                currentPhase = 'exhale'; // ตั้งหลอกไว้เพื่อให้ switchPhase เปลี่ยนเป็น inhale
+                timeLeft = 4;
+                switchPhase(); // สลับเป็น 'หายใจเข้า' รอบแรก
+                
+                // เรียกครั้งแรกทันที
+                timerText.innerText = timeLeft;
+                playTickSound();
+                timeLeft--;
+
+                // จับเวลาทุกๆ 1 วินาที
+                timerInterval = setInterval(timerLoop, 1000);
             }
         }
 
