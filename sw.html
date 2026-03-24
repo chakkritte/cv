@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zen Breathe</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #ffffff;
+            --circle-color: #00e5ff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            width: 100%;
+        }
+
+        /* วงกลมหลัก */
+        .breathe-circle {
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(0,229,255,0.2) 0%, rgba(0,229,255,0) 70%);
+            border: 2px solid rgba(0, 229, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.2);
+            /* แอนิเมชันที่นุ่มนวลที่สุด */
+            transition: transform 4s ease-in-out, box-shadow 4s ease-in-out, border-color 4s ease-in-out;
+            position: relative;
+        }
+
+        .instruction-text {
+            position: absolute;
+            font-size: 1.2rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-align: center;
+            opacity: 0.8;
+            transition: opacity 0.5s ease;
+        }
+
+        /* State: หายใจเข้า */
+        .inhale {
+            transform: scale(1.8);
+            box-shadow: 0 0 80px rgba(0, 229, 255, 0.6);
+            border-color: rgba(0, 229, 255, 1);
+        }
+
+        /* State: หายใจออก */
+        .exhale {
+            transform: scale(1);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+            border-color: rgba(0, 229, 255, 0.3);
+        }
+
+        .controls {
+            margin-bottom: 50px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 32px;
+            font-size: 1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="breathe-circle" id="circle">
+            <div class="instruction-text" id="text">พร้อมไหม?</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn">เริ่มฝึกหายใจ</button>
+    </div>
+
+    <script>
+        const circle = document.getElementById('circle');
+        const text = document.getElementById('text');
+        const startBtn = document.getElementById('startBtn');
+
+        let isBreathing = false;
+        let breatheInterval;
+        const totalTime = 8000; // รอบละ 8 วินาที
+        const breatheTime = 4000; // เข้า 4 วิ, ออก 4 วิ
+
+        // ระบบเสียง (Web Audio API) สำหรับทำเสียง Ambient ผ่อนคลาย
+        let audioCtx;
+        let oscillator;
+        let gainNode;
+
+        function initAudio() {
+            if (!audioCtx) {
+                // สร้าง Context เสียง
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                
+                oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+
+                // ใช้คลื่น Sine ความถี่ 174 Hz (Solfeggio frequency สำหรับความผ่อนคลาย)
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 174; 
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                // เริ่มต้นแบบไม่มีเสียง
+                gainNode.gain.value = 0; 
+                oscillator.start();
+            }
+            // ป้องกันเบราว์เซอร์บล็อกเสียง
+            if(audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playInhaleSound() {
+            if (!audioCtx) return;
+            // ค่อยๆ เพิ่มความดังของเสียงใน 2 วินาที (Fade in)
+            gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 1.5);
+            // ปรับเสียงสูงขึ้นเล็กน้อยให้รู้สึกถึงการ "ขยายตัว"
+            oscillator.frequency.setTargetAtTime(184, audioCtx.currentTime, 2);
+        }
+
+        function playExhaleSound() {
+            if (!audioCtx) return;
+            // ค่อยๆ ลดความดังของเสียงลง (Fade out)
+            gainNode.gain.setTargetAtTime(0.05, audioCtx.currentTime, 1.5);
+            // ปรับเสียงต่ำลงให้รู้สึก "ปล่อยวาง"
+            oscillator.frequency.setTargetAtTime(174, audioCtx.currentTime, 2);
+        }
+
+        function stopAudio() {
+            if (audioCtx && gainNode) {
+                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
+            }
+        }
+
+        function breatheAnimation() {
+            if (!isBreathing) return;
+
+            // หายใจเข้า
+            text.innerText = 'หายใจเข้า...';
+            circle.className = 'breathe-circle inhale';
+            playInhaleSound();
+
+            // หายใจออก (หลังจากผ่านไป 4 วินาที)
+            setTimeout(() => {
+                if (!isBreathing) return;
+                text.innerText = 'หายใจออก...';
+                circle.className = 'breathe-circle exhale';
+                playExhaleSound();
+            }, breatheTime);
+        }
+
+        function toggleBreathe() {
+            if (isBreathing) {
+                // หยุดการทำงาน
+                isBreathing = false;
+                clearInterval(breatheInterval);
+                circle.className = 'breathe-circle';
+                text.innerText = 'พร้อมไหม?';
+                startBtn.innerText = 'เริ่มฝึกหายใจ';
+                stopAudio();
+            } else {
+                // เริ่มการทำงาน
+                initAudio(); // Initialize เสียงตอนที่ User กดปุ่ม (ตามกฎของ Browser)
+                isBreathing = true;
+                startBtn.innerText = 'หยุด';
+                breatheAnimation(); // ทำรอบแรกทันที
+                breatheInterval = setInterval(breatheAnimation, totalTime); // วนลูปทุกๆ 8 วินาที
+            }
+        }
+
+        startBtn.addEventListener('click', toggleBreathe);
+    </script>
+</body>
+</html>
