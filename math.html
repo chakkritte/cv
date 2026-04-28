@@ -1,223 +1,363 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Equation Editor</title>
 
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5628266432213997" crossorigin="anonymous"></script>
-    
-  
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <!-- CodeCogs Editor -->
-  <link rel="stylesheet" href="https://editor.codecogs.com/eqneditor.css"/>
-  <script src="https://editor.codecogs.com/eqneditor.api.min.js"></script>
-
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            display: ['"Crimson Pro"', 'Georgia', 'serif'],
-            body: ['"Source Sans 3"', 'system-ui', 'sans-serif'],
+            display: ['"DM Serif Display"', 'serif'],
+            body: ['"DM Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
           },
+          colors: {
+            brand: {
+              50:  '#f0f7ff',
+              100: '#e0efff',
+              200: '#b9d9ff',
+              300: '#7bbcff',
+              400: '#3499ff',
+              500: '#0a78f5',
+              600: '#005bd1',
+              700: '#0048a8',
+              800: '#063d8a',
+              900: '#0b3472',
+            }
+          }
         }
       }
     }
+  </script>
 
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <!-- CodeCogs Equation Editor -->
+  <script src="https://editor.codecogs.com/eqneditor.api.min.js"></script>
+  <link rel="stylesheet" href="https://editor.codecogs.com/eqneditor.css"/>
+
+  <script>
+    var textarea = null;
     window.onload = function () {
-      textarea = EqEditor.TextArea.link('latexInput')
-        .addOutput(new EqEditor.Output('output'))
-        .addHistoryMenu(new EqEditor.History('history'));
-      EqEditor.Toolbar.link('toolbar').addTextArea(textarea);
+      try {
+        textarea = EqEditor.TextArea.link('latexInput')
+          .addOutput(new EqEditor.Output('output'))
+          .addHistoryMenu(new EqEditor.History('history'));
+        EqEditor.Toolbar.link('toolbar').addTextArea(textarea);
+      } catch(e) {
+        console.warn('CodeCogs editor failed to load:', e);
+      }
     }
   </script>
 
   <style>
-    html {
-      zoom: 1.5;
-    }
-    /* CodeCogs override: match our clean theme */
-    #history select {
-      background-color: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      padding: 0.375rem 0.75rem;
-      font-family: 'Source Sans 3', sans-serif;
-      font-size: 0.875rem;
-      color: #334155;
-      width: 100%;
-      margin-bottom: 0.5rem;
-    }
-
-    #history select:focus {
-      outline: none;
-      border-color: #94a3b8;
-      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15);
-    }
-
-    #toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem;
-      margin-bottom: 0.75rem;
-    }
-
-    #toolbar button,
-    #toolbar .button {
+    body {
+      font-family: 'DM Sans', sans-serif;
       background-color: #f8fafc;
+    }
+
+    /* ── Toolbar overrides ─────────────────────────────────────── */
+    #toolbar {
+      border-radius: 10px 10px 0 0;
       border: 1px solid #e2e8f0;
-      border-radius: 0.375rem;
-      padding: 0.375rem 0.5rem;
-      cursor: pointer;
-      font-size: 0.875rem;
-      line-height: 1;
-      color: #475569;
-      transition: all 0.15s ease;
+      border-bottom: none;
+      background: #ffffff;
+      overflow: hidden;
     }
 
-    #toolbar button:hover,
-    #toolbar .button:hover {
-      background-color: #f1f5f9;
-      border-color: #cbd5e1;
-      color: #1e293b;
-    }
-
-    #toolbar .group {
-      display: flex;
-      gap: 0.125rem;
-      margin-right: 0.25rem;
-    }
-
+    /* ── LaTeX input area ──────────────────────────────────────── */
     #latexInput {
-      width: 100%;
-      min-height: 140px;
-      padding: 1rem;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      font-family: 'Source Sans 3', 'Consolas', 'Monaco', monospace;
-      font-size: 0.9375rem;
-      line-height: 1.6;
-      color: #1e293b;
-      background-color: #fff;
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      width: 100% !important;
+      min-height: 80px !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 14px !important;
+      color: #1e293b !important;
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      border-top: none !important;
+      border-bottom: none !important;
+      padding: 14px 16px !important;
+      resize: vertical !important;
+      outline: none !important;
+      box-shadow: none !important;
+      transition: background 0.2s;
     }
 
     #latexInput:focus {
-      border-color: #94a3b8;
-      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15);
+      background: #ffffff !important;
+      border-color: #3499ff !important;
     }
 
-    #latexInput::placeholder {
-      color: #94a3b8;
+    /* ── History panel ─────────────────────────────────────────── */
+    #history {
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      margin-bottom: 12px;
+      overflow: hidden;
     }
 
+    /* ── Output image ──────────────────────────────────────────── */
     #output {
       max-width: 100%;
-      height: auto;
+      display: block;
     }
 
-    /* Preview area override */
-    #equation-output {
+    /* ── Ad slot base ──────────────────────────────────────────── */
+    .ad-slot {
+      background: repeating-linear-gradient(
+        45deg,
+        #f1f5f9,
+        #f1f5f9 10px,
+        #e2e8f0 10px,
+        #e2e8f0 20px
+      );
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 160px;
-      padding: 2rem;
+      color: #94a3b8;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 500;
     }
+
+    /* ── Copy button animation ─────────────────────────────────── */
+    .copy-btn:active { transform: scale(0.95); }
   </style>
 </head>
-<body class="bg-slate-50 font-body text-slate-700 min-h-screen flex flex-col">
 
-  <!-- Header -->
-  <header class="bg-white border-b border-slate-200">
-    <div class="max-w-3xl mx-auto px-6 py-10 text-center">
-      <h1 class="font-display text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">
-        Equation Editor
-      </h1>
-      <p class="mt-3 text-lg text-slate-500 font-light">
-        Compose beautiful mathematical expressions with ease
-      </p>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+  <!-- ════════════════════════════════════════════════
+       HEADER
+  ════════════════════════════════════════════════ -->
+  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <!-- Icon -->
+        <div class="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="2" y="15" font-size="14" fill="white" font-family="serif" font-style="italic">Σ</text>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-display text-xl text-slate-900 leading-none">Equation Editor</h1>
+          <p class="text-xs text-slate-400 font-body mt-0.5">Powered by CodeCogs · LaTeX rendered live</p>
+        </div>
+      </div>
+      <a
+        href="https://editor.codecogs.com"
+        target="_blank"
+        class="text-xs text-brand-500 hover:text-brand-700 font-medium transition-colors hidden sm:block"
+      >
+        CodeCogs Docs ↗
+      </a>
     </div>
   </header>
 
-  <!-- Top AdSense Banner -->
-  <div class="bg-white border-b border-slate-200">
-    <div class="max-w-3xl mx-auto px-6 py-4">
-      <!-- Google AdSense: Top Banner -->
-      <div class="h-[90px] w-full bg-slate-100 rounded-lg border border-dashed border-slate-300 flex items-center justify-center">
-        <span class="text-sm text-slate-400 font-medium">AdSense Banner (728x90)</span>
-      </div>
-    </div>
+  <!-- ════════════════════════════════════════════════
+       AD SLOT — TOP BANNER
+  ════════════════════════════════════════════════ -->
+  <!-- Google AdSense: Top Leaderboard Banner (728×90 / responsive) -->
+  <div class="max-w-4xl mx-auto w-full px-4 pt-5">
+    <div class="ad-slot w-full h-[90px]">Advertisement · 728 × 90</div>
   </div>
 
-  <!-- Main Content -->
-  <main class="flex-1 px-6 py-10">
-    <div class="max-w-3xl mx-auto">
+  <!-- ════════════════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════════════ -->
+  <main class="flex-1 max-w-4xl mx-auto w-full px-4 py-6 space-y-6">
 
-      <!-- Editor Card -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- Editor Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-        <!-- Toolbar + History Section -->
-        <div class="border-b border-slate-100 px-6 pt-5 pb-1">
-          <div id="history"></div>
-          <div id="toolbar"></div>
-        </div>
-
-        <!-- LaTeX Input -->
-        <div class="px-6 py-5">
-          <label for="latexInput" class="block text-sm font-semibold text-slate-600 mb-2 uppercase tracking-wider text-xs">
-            LaTeX Input
-          </label>
-          <div id="latexInput" placeholder="Write Equation here..."></div>
-        </div>
-
-        <!-- Equation Output Preview -->
-        <div class="border-t border-slate-100 bg-slate-50/60">
-          <div class="px-6 py-4">
-            <span class="block text-sm font-semibold text-slate-600 uppercase tracking-wider text-xs mb-3">
-              Preview
-            </span>
-            <div id="equation-output" class="bg-white rounded-xl border border-slate-200 shadow-sm">
-              <img id="output" alt="Equation preview">
-            </div>
-          </div>
-        </div>
-
+      <!-- Card Header -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-600 uppercase tracking-widest">Editor</span>
+        <span class="text-xs text-slate-400">Type LaTeX below · See preview instantly</span>
       </div>
 
-      <!-- Bottom AdSense Banner -->
-      <div class="mt-8">
-        <!-- Google AdSense: Bottom Banner -->
-        <div class="h-[90px] w-full bg-white rounded-xl border border-dashed border-slate-300 flex items-center justify-center shadow-sm">
-          <span class="text-sm text-slate-400 font-medium">AdSense Banner (728x90)</span>
-        </div>
+      <!-- History -->
+      <div class="px-5 pt-4">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">History</p>
+        <div id="history"></div>
       </div>
 
+      <!-- Toolbar + Input -->
+      <div class="px-5 pt-4 pb-5 space-y-0">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">Toolbar</p>
+        <div id="toolbar"></div>
+        <div id="latexInput" contenteditable="true" style="white-space:pre-wrap;" data-placeholder="Write Equation here… e.g. \frac{a}{b}"></div>
+        <!-- bottom border cap -->
+        <div class="h-[1px] bg-slate-200 rounded-b-[10px]"></div>
+      </div>
     </div>
+
+    <!-- Preview Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-600 uppercase tracking-widest">Preview</span>
+        <button
+          class="copy-btn text-xs px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 hover:bg-brand-100 font-medium transition-colors"
+          onclick="copyLatex()"
+          title="Copy LaTeX source"
+        >
+          Copy LaTeX
+        </button>
+      </div>
+
+      <div class="px-5 py-8 flex items-center justify-center min-h-[120px] bg-slate-50">
+        <div id="equation-output">
+          <img id="output" alt="Rendered equation" class="mx-auto"/>
+          <p id="empty-hint" class="text-slate-300 text-sm font-body italic">
+            Your equation will appear here…
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AD SLOT — BELOW PREVIEW -->
+    <!-- Google AdSense: Mid-Page Rectangle (336×280 / responsive) -->
+    <div class="ad-slot w-full h-[100px]">Advertisement · 336 × 280</div>
+
+    <!-- Quick Reference -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <span class="text-sm font-semibold text-slate-600 uppercase tracking-widest">Quick LaTeX Reference</span>
+      </div>
+      <div class="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <!-- Each chip is clickable to insert LaTeX -->
+        <button onclick="insertLatex('\\frac{a}{b}')"
+          class="flex flex-col items-start px-3 py-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50 transition-all group">
+          <code class="font-mono text-xs text-slate-400 group-hover:text-brand-500 transition-colors">\frac{a}{b}</code>
+          <span class="text-xs text-slate-500 mt-1 font-medium">Fraction</span>
+        </button>
+        <button onclick="insertLatex('\\sqrt{x}')"
+          class="flex flex-col items-start px-3 py-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50 transition-all group">
+          <code class="font-mono text-xs text-slate-400 group-hover:text-brand-500 transition-colors">\sqrt{x}</code>
+          <span class="text-xs text-slate-500 mt-1 font-medium">Square Root</span>
+        </button>
+        <button onclick="insertLatex('\\sum_{i=0}^{n}')"
+          class="flex flex-col items-start px-3 py-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50 transition-all group">
+          <code class="font-mono text-xs text-slate-400 group-hover:text-brand-500 transition-colors">\sum_{i=0}^{n}</code>
+          <span class="text-xs text-slate-500 mt-1 font-medium">Summation</span>
+        </button>
+        <button onclick="insertLatex('\\int_{a}^{b}')"
+          class="flex flex-col items-start px-3 py-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50 transition-all group">
+          <code class="font-mono text-xs text-slate-400 group-hover:text-brand-500 transition-colors">\int_{a}^{b}</code>
+          <span class="text-xs text-slate-500 mt-1 font-medium">Integral</span>
+        </button>
+        <button onclick="insertLatex('x^{2} + y^{2} = z^{2}')"
+          class="flex flex-col items-start px-3 py-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50 transition-all group">
+          <code class="font-mono text-xs text-slate-400 group-hover:text-brand-500 transition-colors">x^2 + y^2 = z^2</code>
+          <span class="text-xs text-slate-500 mt-1 font-medium">Pythagorean</span>
+        </button>
+        <button onclick="insertLatex('\\lim_{x \\to \\infty}')"
+          class="flex flex-col items-start px-3 py-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50 transition-all group">
+          <code class="font-mono text-xs text-slate-400 group-hover:text-brand-500 transition-colors">\lim_{x \to \infty}</code>
+          <span class="text-xs text-slate-500 mt-1 font-medium">Limit</span>
+        </button>
+      </div>
+    </div>
+
   </main>
 
-  <!-- Footer -->
-  <footer class="bg-white border-t border-slate-200 mt-auto">
-    <div class="max-w-3xl mx-auto px-6 py-8 text-center">
-      <p class="text-sm text-slate-400">
-        made by Chakkrit Termritthikun
+  <!-- ════════════════════════════════════════════════
+       FOOTER AD SLOT
+  ════════════════════════════════════════════════ -->
+  <!-- Google AdSense: Footer Banner (728×90 / responsive) -->
+  <div class="max-w-4xl mx-auto w-full px-4 pb-4">
+    <div class="ad-slot w-full h-[90px]">Advertisement · 728 × 90</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       FOOTER
+  ════════════════════════════════════════════════ -->
+  <footer class="bg-white border-t border-slate-200 py-5">
+    <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p class="text-sm text-slate-400 font-body">
+        Made by <span class="text-slate-600 font-medium">Chakkrit Termritthikun</span>
+      </p>
+      <p class="text-xs text-slate-300 font-body">
+        © <span id="year"></span> · Powered by
+        <a href="https://editor.codecogs.com" target="_blank" class="text-brand-400 hover:text-brand-600 transition-colors">CodeCogs</a>
       </p>
     </div>
   </footer>
 
   <script>
+    // Set year
     document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
 
+    // Hide "empty-hint" once an equation is rendered
+    const outputImg = document.getElementById('output');
+    const hint = document.getElementById('empty-hint');
+    if (outputImg) {
+      outputImg.addEventListener('load', () => {
+        if (outputImg.src && outputImg.src !== window.location.href) {
+          hint.style.display = 'none';
+        }
+      });
+    }
+
+    // Copy LaTeX helper
+    function copyLatex() {
+      var text = '';
+      if (textarea && typeof textarea.getText === 'function') {
+        text = textarea.getText();
+      } else {
+        var el = document.getElementById('latexInput');
+        text = el ? (el.value || el.textContent || el.innerText || '') : '';
+      }
+      if (!text.trim()) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          var btn = document.querySelector('.copy-btn');
+          if (!btn) return;
+          var orig = btn.textContent;
+          btn.textContent = '\u2713 Copied!';
+          btn.classList.add('bg-green-50', 'text-green-600');
+          setTimeout(function() {
+            btn.textContent = orig;
+            btn.classList.remove('bg-green-50', 'text-green-600');
+          }, 1800);
+        }).catch(function(){});
+      }
+    }
+
+    function insertLatex(latex) {
+      if (textarea && typeof textarea.setText === 'function') {
+        var current = textarea.getText() || '';
+        var sep = current.trim() ? ' ' : '';
+        textarea.setText(current + sep + latex);
+        return;
+      }
+      var el = document.getElementById('latexInput');
+      if (!el) return;
+      var current = el.value || el.textContent || '';
+      var sep = current.trim() ? ' ' : '';
+      try {
+        if (typeof el.value !== 'undefined') {
+          el.value = current + sep + latex;
+        } else {
+          el.textContent = current + sep + latex;
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(e) {}
+    }
+  </script>
 </body>
 </html>

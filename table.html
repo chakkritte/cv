@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LaTeX Table Generator</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"DM Serif Display"', 'serif'],
+            body: ['"DM Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50:'#f0f7ff', 100:'#e0efff', 200:'#b9d9ff',
+              300:'#7bbcff', 400:'#3499ff', 500:'#0a78f5',
+              600:'#005bd1', 700:'#0048a8', 800:'#063d8a', 900:'#0b3472',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: #f8fafc; }
+
+    /* ── Grid table ─────────────────────────────────────── */
+    #grid-table { border-collapse: collapse; table-layout: fixed; }
+    #grid-table td {
+      min-width: 80px; max-width: 200px;
+      height: 34px; padding: 0;
+      position: relative; cursor: default;
+      background: #fff;
+      transition: background 0.1s;
+      /* borders set via JS inline style based on 3-state model */
+    }
+    #grid-table td.selected { background: #dbeafe !important; }
+    #grid-table td.editing { background: #fff !important; outline: 2px solid #3499ff; z-index:2; }
+    #grid-table td input {
+      width: 100%; height: 100%;
+      border: none; outline: none;
+      background: transparent;
+      padding: 4px 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: #1e293b;
+    }
+    #grid-table td .cell-text {
+      padding: 4px 6px;
+      font-size: 13px;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      height: 100%;
+      display: flex; align-items: center;
+    }
+    #grid-table td.align-left .cell-text   { justify-content: flex-start; }
+    #grid-table td.align-center .cell-text { justify-content: center; }
+    #grid-table td.align-right .cell-text  { justify-content: flex-end; }
+    #grid-table td.bold .cell-text         { font-weight: 700; }
+    #grid-table td.italic .cell-text       { font-style: italic; }
+    #grid-table td.underline .cell-text    { text-decoration: underline; }
+    #grid-table td.header-row             { background: #f1f5f9; }
+    #grid-table td.header-row .cell-text   { font-weight: 600; color: #0a78f5; }
+
+    /* Row/col headers */
+    .row-num, .col-header {
+      background: #f8fafc; color: #94a3b8;
+      font-size: 11px; font-weight: 600;
+      text-align: center; user-select: none; cursor: default;
+      border: 1px solid #e2e8f0;
+    }
+    .col-header { padding: 4px 0; min-width: 80px; }
+    .row-num    { width: 36px; min-width: 36px; }
+    .corner     { width: 36px; }
+
+    /* ── LaTeX output ────────────────────────────────────── */
+    #latex-output {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px; line-height: 1.7;
+      color: #1e293b; white-space: pre;
+      overflow: auto; tab-size: 2;
+    }
+
+    /* ── Toolbar buttons ─────────────────────────────────── */
+    .tb-btn {
+      padding: 5px 10px; border-radius: 6px;
+      border: 1px solid #e2e8f0; background: #fff;
+      font-size: 12px; font-family: 'DM Sans', sans-serif;
+      cursor: pointer; color: #475569;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .tb-btn:hover { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+    .tb-btn.active { background: #dbeafe; border-color: #3499ff; color: #005bd1; }
+    .tb-btn-primary { background: #0a78f5; color: #fff; border-color: #0a78f5; }
+    .tb-btn-primary:hover { background: #005bd1; border-color: #005bd1; color: #fff; }
+
+    /* ── Dropdown menu ───────────────────────────────────── */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu {
+      display: none; position: absolute;
+      top: calc(100% + 4px); left: 0; z-index: 50;
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      min-width: 200px; padding: 4px;
+    }
+    .dropdown.open .dropdown-menu { display: block; }
+    .dropdown-item {
+      display: block; width: 100%;
+      padding: 7px 12px; font-size: 13px; color: #374151;
+      border-radius: 6px; cursor: pointer; text-align: left;
+      white-space: nowrap; transition: background 0.1s;
+      border: none; background: none; font-family: 'DM Sans', sans-serif;
+    }
+    .dropdown-item:hover { background: #f1f5f9; color: #0a78f5; }
+    .dropdown-item .shortcut { float: right; color: #94a3b8; font-size: 10px; margin-left: 20px; }
+    .dropdown-item:hover .shortcut { color: #0a78f5; }
+    .dropdown-separator { height: 1px; background: #e2e8f0; margin: 4px 2px; }
+
+    /* ── Modal ───────────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.35); backdrop-filter: blur(2px);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff; border-radius: 16px;
+      padding: 28px 32px; min-width: 320px; max-width: 460px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+
+    /* ── Ad slot ─────────────────────────────────────────── */
+    .ad-slot {
+      background: repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 10px,#e2e8f0 10px,#e2e8f0 20px);
+      border: 1px dashed #cbd5e1; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #94a3b8; font-size: 12px;
+      letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500;
+    }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: #fff;
+      padding: 10px 20px; border-radius: 99px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s; z-index: 200;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Syntax highlight ────────────────────────────────── */
+    .hl-cmd { color: #0a78f5; }
+    .hl-brace { color: #64748b; }
+    .hl-str { color: #0f766e; }
+
+    .format-nav { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
+    .format-nav button {
+      background: none; border: none; color: #64748b;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; transition: all 0.15s;
+    }
+    .format-nav button:hover { color: #1e293b; background: #e2e8f0; }
+    .format-nav button.active { background: #0a78f5; color: #fff; box-shadow: 0 1px 3px rgba(10,120,245,0.3); }
+
+    .color-pick {
+      width: 28px; height: 28px; border: 2px solid #e2e8f0;
+      border-radius: 6px; cursor: pointer; padding: 0; background: none; overflow: hidden;
+    }
+    .color-pick::-webkit-color-swatch-wrapper { padding: 0; }
+    .color-pick::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+    /* ── Border Edit Mode ──────────────────────────────── */
+    .border-edit-active #grid-table td { cursor: crosshair; }
+
+    .be {
+      position: absolute; z-index: 3;
+      transition: background 0.1s;
+    }
+    .be-top    { top: -3px; left: 0; right: 0; height: 6px; cursor: row-resize; }
+    .be-bottom { bottom: -3px; left: 0; right: 0; height: 6px; cursor: row-resize; }
+    .be-left   { left: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; }
+    .be-right  { right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; }
+
+    .be-top:hover, .be-bottom:hover {
+      background: rgba(10,120,245,0.35);
+    }
+    .be-left:hover, .be-right:hover {
+      background: rgba(10,120,245,0.35);
+    }
+
+    /* border indicator lines shown on hover */
+    .be-preview {
+      position: absolute; z-index: 4; pointer-events: none;
+      background: #0a78f5;
+    }
+    .be-top .be-preview    { top: 2px; left: 0; right: 0; height: 2px; }
+    .be-bottom .be-preview { bottom: 2px; left: 0; right: 0; height: 2px; }
+    .be-left .be-preview   { left: 2px; top: 0; bottom: 0; width: 2px; }
+    .be-right .be-preview  { right: 2px; top: 0; bottom: 0; width: 2px; }
+
+    /* Current border visual indicators (small dots/lines at edges) */
+    .bi { position: absolute; z-index: 2; pointer-events: none; }
+    .bi-on { background: #0a78f5; }
+    .bi-off { background: transparent; }
+    .bi-top    { top: 0; left: 0; right: 0; height: 2px; }
+    .bi-bottom { bottom: 0; left: 0; right: 0; height: 2px; }
+    .bi-left   { left: 0; top: 0; bottom: 0; width: 2px; }
+    .bi-right  { right: 0; top: 0; bottom: 0; width: 2px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><text x="2" y="15" font-size="12" fill="white" font-family="serif" font-style="italic" font-weight="bold">T</text><text x="9" y="15" font-size="9" fill="white" font-family="serif" font-style="italic">L</text></svg>
+      </div>
+      <div>
+        <h1 class="font-display text-xl text-slate-900 leading-none">LaTeX Table Generator</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Build tables visually &middot; Generate LaTeX instantly</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="format-nav">
+        <button class="active">LaTeX</button>
+        <button>HTML</button>
+        <button>Markdown</button>
+        <button>Text</button>
+      </div>
+      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+        <span class="px-2 py-1 bg-slate-100 rounded-md font-mono">dbl-click</span> edit &middot;
+        <span class="px-2 py-1 bg-slate-100 rounded-md font-mono">Tab</span> navigate
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-7xl mx-auto w-full px-4 pt-4">
+  <div class="ad-slot w-full h-[90px]">Advertisement &middot; 728 &times; 90</div>
+</div>
+
+<main class="flex-1 max-w-7xl mx-auto w-full px-4 py-5 space-y-4">
+
+  <!-- ── Menu + Toolbar ────────────────────── -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3">
+    <div class="flex flex-wrap gap-2 items-center">
+
+      <div class="dropdown" id="dd-file">
+        <button class="tb-btn" onclick="toggleDD('dd-file')">File &#9662;</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="openModal('modal-new')">New table&hellip;<span class="shortcut">Ctrl+N</span></button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="importCSV()">Import CSV file&hellip;</button>
+          <button class="dropdown-item" onclick="openModal('modal-paste')">Paste table data&hellip;</button>
+          <button class="dropdown-item" onclick="openModal('modal-latex')">From LaTeX code&hellip;</button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="dlCSV()">Download as CSV</button>
+          <button class="dropdown-item" onclick="makeExample()">Create example table</button>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-edit">
+        <button class="tb-btn" onclick="toggleDD('dd-edit')">Edit &#9662;</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="doUndo()">Undo<span class="shortcut">Ctrl+Z</span></button>
+          <button class="dropdown-item" onclick="doRedo()">Redo<span class="shortcut">Ctrl+Y</span></button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="openModal('modal-find')">Find and replace&hellip;</button>
+          <button class="dropdown-item" onclick="clearContent()">Clear all content</button>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-table">
+        <button class="tb-btn" onclick="toggleDD('dd-table')">Table &#9662;</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="openModal('modal-new')">Set size&hellip;</button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="clearContent()">Clear table</button>
+          <button class="dropdown-item" onclick="clearFmt()">Clear formatting</button>
+          <button class="dropdown-item" onclick="transpose()">Transpose table</button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="setBorders('all')">Add all borders</button>
+          <button class="dropdown-item" onclick="setBorders('h')">Add horizontal borders</button>
+          <button class="dropdown-item" onclick="setBorders('v')">Add vertical borders</button>
+          <button class="dropdown-item" onclick="setBorders('none')">Remove all borders</button>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-col">
+        <button class="tb-btn" onclick="toggleDD('dd-col')">Column &#9662;</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="setAlign('left')">Align Left</button>
+          <button class="dropdown-item" onclick="setAlign('center')">Align Center</button>
+          <button class="dropdown-item" onclick="setAlign('right')">Align Right</button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="insCol('left')">Insert to the left</button>
+          <button class="dropdown-item" onclick="insCol('right')">Insert to the right</button>
+          <button class="dropdown-item" onclick="rmCol()">Remove</button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="moveCol('left')">Move column left</button>
+          <button class="dropdown-item" onclick="moveCol('right')">Move column right</button>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-row">
+        <button class="tb-btn" onclick="toggleDD('dd-row')">Row &#9662;</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="insRow('above')">Insert above</button>
+          <button class="dropdown-item" onclick="insRow('below')">Insert below</button>
+          <button class="dropdown-item" onclick="rmRow()">Remove</button>
+          <div class="dropdown-separator"></div>
+          <button class="dropdown-item" onclick="moveRow('up')">Move row up</button>
+          <button class="dropdown-item" onclick="moveRow('down')">Move row down</button>
+        </div>
+      </div>
+      <div class="dropdown" id="dd-cell">
+        <button class="tb-btn" onclick="toggleDD('dd-cell')">Cell &#9662;</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="mergeCells()">Merge cells</button>
+          <button class="dropdown-item" onclick="splitCell()">Split cell</button>
+        </div>
+      </div>
+
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+
+      <button class="tb-btn font-bold" title="Bold" onclick="toggleFmt('bold')"><b>B</b></button>
+      <button class="tb-btn italic" title="Italic" onclick="toggleFmt('italic')"><i>I</i></button>
+      <button class="tb-btn" title="Underline" onclick="toggleFmt('underline')">U</button>
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+      <button class="tb-btn" title="Align Left" onclick="setAlign('left')">&#8796;</button>
+      <button class="tb-btn" title="Align Center" onclick="setAlign('center')">&#8800;</button>
+      <button class="tb-btn" title="Align Right" onclick="setAlign('right')">&#11002;</button>
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+      <button class="tb-btn" title="All borders" onclick="setBorders('all')">&#8862;</button>
+      <button class="tb-btn" title="No borders" onclick="setBorders('none')">&#8863;</button>
+      <button class="tb-btn" title="Horizontal borders" onclick="setBorders('h')">&#9776;</button>
+      <button class="tb-btn" id="btn-border-edit" title="Toggle border edit mode (click cell edges)" onclick="toggleBorderEdit()">&#9998;</button>
+      <button class="tb-btn" title="Merge cells" onclick="mergeCells()">&#10697;</button>
+      <button class="tb-btn" title="Split cell" onclick="splitCell()">&#10694;</button>
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+      <input type="color" id="fg-color" value="#1e293b" class="color-pick" title="Text color">
+      <input type="color" id="bg-color" value="#ffffff" class="color-pick" title="Background color">
+      <button class="tb-btn" title="Clear colors" onclick="clearColors()">&#8856;</button>
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+      <select id="tbl-style" class="tb-btn text-sm pr-6" style="appearance:auto">
+        <option value="default">Default style</option>
+        <option value="booktabs">Booktabs style</option>
+      </select>
+      <div class="flex-1"></div>
+      <button class="tb-btn" onclick="insRow('below')">+ Row</button>
+      <button class="tb-btn" onclick="rmRow()">&minus; Row</button>
+      <button class="tb-btn" onclick="insCol('right')">+ Col</button>
+      <button class="tb-btn" onclick="rmCol()">&minus; Col</button>
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+      <button class="tb-btn tb-btn-primary px-5 text-sm font-semibold" onclick="generate()">&#9889; Generate</button>
+    </div>
+  </div>
+
+  <!-- ── Options ────────────────────────────── -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3">
+    <div class="flex flex-wrap gap-4 items-center text-sm text-slate-600">
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-hdr" class="rounded border-slate-300 text-brand-500" checked><span>First row as header</span></label>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-ctr" class="rounded border-slate-300 text-brand-500" checked><span>Center table</span></label>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-cap" class="rounded border-slate-300 text-brand-500"><span>Add caption</span></label>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-lbl" class="rounded border-slate-300 text-brand-500"><span>Add label</span></label>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-esc" class="rounded border-slate-300 text-brand-500"><span>Escape special chars</span></label>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-cmp" class="rounded border-slate-300 text-brand-500"><span>Compress whitespace</span></label>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="opt-smt" class="rounded border-slate-300 text-brand-500"><span>Smart formatting</span></label>
+    </div>
+    <div id="cap-row" class="hidden gap-2 items-center mt-3 text-sm text-slate-600">
+      <span class="text-slate-500">Caption:</span>
+      <input type="text" id="cap-txt" placeholder="Table caption&hellip;" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-brand-400 w-64">
+    </div>
+    <div id="lbl-row" class="hidden gap-2 items-center mt-3 text-sm text-slate-600">
+      <span class="text-slate-500">Label:</span>
+      <input type="text" id="lbl-txt" placeholder="tab:my_table" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-brand-400 w-48">
+    </div>
+  </div>
+
+  <!-- ── Grid + Output ──────────────────────── -->
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+      <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-600 uppercase tracking-widest">Table Editor</span>
+        <span id="sel-info" class="text-xs text-slate-400 font-mono">No selection</span>
+      </div>
+      <div id="grid-container" class="p-4 overflow-auto flex-1">
+        <table id="grid-table"></table>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+      <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-600 uppercase tracking-widest">LaTeX Output</span>
+        <button class="tb-btn text-xs" onclick="copyLatex()">Copy to Clipboard</button>
+      </div>
+      <div class="p-4 flex-1 overflow-auto">
+        <pre id="latex-output" class="text-slate-400 italic text-sm">Click &#9889; Generate to produce LaTeX code&hellip;</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="ad-slot w-full h-[100px]">Advertisement &middot; 336 &times; 280</div>
+
+  <!-- ── How to use ──────────────────────────── -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
+    <h2 class="font-display text-lg text-slate-800 mb-4">How to use the LaTeX table generator</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-slate-600">
+      <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 font-bold text-sm flex items-center justify-center shrink-0">1</span><p>Set table size via <strong>File &rarr; New table</strong> or use <strong>+ Row / + Col</strong> buttons.</p></div>
+      <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 font-bold text-sm flex items-center justify-center shrink-0">2</span><p><strong>Double-click</strong> any cell to edit. Use <strong>Tab</strong> and arrow keys to navigate.</p></div>
+      <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 font-bold text-sm flex items-center justify-center shrink-0">3</span><p>Adjust alignment and borders with the toolbar or <strong>Table / Column / Row</strong> menus.</p></div>
+      <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 font-bold text-sm flex items-center justify-center shrink-0">4</span><p>Click <strong>&#9889; Generate</strong>, then <strong>Copy to Clipboard</strong> and paste into your LaTeX document.</p></div>
+    </div>
+  </div>
+</main>
+
+<div class="max-w-7xl mx-auto w-full px-4 pb-4"><div class="ad-slot w-full h-[90px]">Advertisement &middot; 728 &times; 90</div></div>
+
+<footer class="bg-white border-t border-slate-200 py-5">
+  <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+    <p class="text-sm text-slate-400">Made by <span class="text-slate-600 font-medium">Chakkrit Termritthikun</span></p>
+    <p class="text-xs text-slate-300">&copy; <span id="yr"></span> &middot; LaTeX Table Generator</p>
+  </div>
+</footer>
+
+<!-- ── Modals ─────────────────────────────────── -->
+<div class="modal-overlay" id="modal-new">
+  <div class="modal-box">
+    <h3 class="font-display text-lg text-slate-800 mb-4">Create New Table</h3>
+    <p class="text-sm text-slate-500 mb-4">Current table contents will be replaced.</p>
+    <div class="flex gap-4 mb-6">
+      <div class="flex-1"><label class="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">Rows</label><input type="number" id="new-rows" value="4" min="1" max="500" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-400"></div>
+      <div class="flex-1"><label class="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">Columns</label><input type="number" id="new-cols" value="4" min="1" max="20" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-400"></div>
+    </div>
+    <div class="flex gap-2 justify-end"><button class="tb-btn" onclick="closeModal('modal-new')">Cancel</button><button class="tb-btn tb-btn-primary" onclick="resizeTbl()">Create</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-paste">
+  <div class="modal-box" style="max-width:560px">
+    <h3 class="font-display text-lg text-slate-800 mb-2">Paste Table Data</h3>
+    <p class="text-sm text-slate-500 mb-3">Paste tab-separated or CSV data from a spreadsheet or document.</p>
+    <textarea id="paste-input" rows="8" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-brand-400 resize-y" placeholder="Paste your table data here&hellip;"></textarea>
+    <div class="flex gap-2 justify-end mt-4"><button class="tb-btn" onclick="closeModal('modal-paste')">Cancel</button><button class="tb-btn tb-btn-primary" onclick="importPaste()">Import</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-latex">
+  <div class="modal-box" style="max-width:560px">
+    <h3 class="font-display text-lg text-slate-800 mb-2">Paste LaTeX Table Source</h3>
+    <p class="text-sm text-slate-500 mb-1">Paste existing LaTeX table code below.</p>
+    <p class="text-xs text-amber-600 mb-3 font-medium">Note: support is limited and may not work for all tables.</p>
+    <textarea id="latex-input" rows="8" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs outline-none focus:border-brand-400 resize-y" placeholder="\begin{tabular}{|l|c|r|}&hellip;"></textarea>
+    <div class="flex gap-2 justify-end mt-4"><button class="tb-btn" onclick="closeModal('modal-latex')">Cancel</button><button class="tb-btn tb-btn-primary" onclick="importLatex()">Load</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-find">
+  <div class="modal-box">
+    <h3 class="font-display text-lg text-slate-800 mb-4">Find and Replace</h3>
+    <div class="space-y-3 mb-5">
+      <div><label class="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">Find</label><input type="text" id="find-text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-400" placeholder="Search text&hellip;"></div>
+      <div><label class="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-1">Replace with</label><input type="text" id="rep-text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-400" placeholder="Replacement&hellip;"></div>
+    </div>
+    <div class="flex gap-2 justify-end"><button class="tb-btn" onclick="closeModal('modal-find')">Cancel</button><button class="tb-btn tb-btn-primary" onclick="doFindRep()">Replace All</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSV(event)">
+
+<script>
+// ── Border state constants ──────────────────────────
+// 0 = hidden (no border, no grid line)
+// 1 = grid (light default, not in LaTeX output)
+// 2 = thick (dark accent, appears in LaTeX output)
+const BRD_HIDDEN = 0;
+const BRD_GRID   = 1;
+const BRD_THICK  = 2;
+
+// Border CSS per state
+const BRD_CSS = {
+  0: '1px solid transparent',
+  1: '1px solid #cbd5e1',
+  2: '2px solid #1e293b'
+};
+
+// ── State ────────────────────────────────────────────
+let R = 4, C = 4;
+let D = [];      // cell data [{text,align,bold,italic,underline,fg,bg}]
+let BD = [];     // borders per cell [{top,right,bottom,left}] values 0|1|2
+let sel = {r1:-1,c1:-1,r2:-1,c2:-1};
+let undos = [], redos = [];
+let editCell = null;
+let dragging = false;
+let merges = {};
+let borderEditMode = false;
+
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+function init(r, c, keep) {
+  const old = keep ? D : null;
+  const oldM = keep ? merges : {};
+  R = Math.max(1, Math.min(r, 500));
+  C = Math.max(1, Math.min(c, 20));
+  D = []; BD = []; merges = {};
+  for (let i=0; i<R; i++) {
+    D[i]=[]; BD[i]=[];
+    for (let j=0; j<C; j++) {
+      D[i][j] = (old&&old[i]&&old[i][j]) ? {...old[i][j]} : {text:'',align:'left',bold:false,italic:false,underline:false,fg:'',bg:''};
+      BD[i][j] = {top:BRD_GRID, right:BRD_GRID, bottom:BRD_GRID, left:BRD_GRID};
+    }
+  }
+  if (keep) {
+    for (const [key,m] of Object.entries(oldM)) {
+      const [mr,mc] = key.split(',').map(Number);
+      if (mr<R&&mc<C&&mr+m.rs<=R&&mc+m.cs<=C) merges[key]={...m};
+    }
+  }
+  sel = {r1:-1,c1:-1,r2:-1,c2:-1};
+  render();
+}
+
+function snap() {
+  undos.push(JSON.stringify({R,C,D,BD,merges}));
+  if (undos.length>80) undos.shift();
+  redos = [];
+}
+
+function doUndo() {
+  if (!undos.length) return;
+  redos.push(JSON.stringify({R,C,D,BD,merges}));
+  const s = JSON.parse(undos.pop());
+  ({R,C,D,BD,merges}=s);
+  render(); toast('Undo');
+}
+
+function doRedo() {
+  if (!redos.length) return;
+  undos.push(JSON.stringify({R,C,D,BD,merges}));
+  const s = JSON.parse(redos.pop());
+  ({R,C,D,BD,merges}=s);
+  render(); toast('Redo');
+}
+
+// ── Merge helpers ────────────────────────────────────
+function getMergeOrigin(r,c) {
+  for (const [key,m] of Object.entries(merges)) {
+    const [mr,mc] = key.split(',').map(Number);
+    if (r>=mr&&r<mr+m.rs&&c>=mc&&c<mc+m.cs) return {r:mr,c:mc,...m};
+  }
+  return null;
+}
+function isMergedChild(r,c) { const o=getMergeOrigin(r,c); return o&&(o.r!==r||o.c!==c); }
+function cellVisible(r,c) { return !isMergedChild(r,c); }
+function removeMergeAt(r,c) { const o=getMergeOrigin(r,c); if(o) delete merges[o.r+','+o.c]; }
+
+function selRange() {
+  if (sel.r1<0) return {r1:0,c1:0,r2:R-1,c2:C-1};
+  return { r1:Math.min(sel.r1,sel.r2), c1:Math.min(sel.c1,sel.c2), r2:Math.max(sel.r1,sel.r2), c2:Math.max(sel.c1,sel.c2) };
+}
+
+// ── Render ───────────────────────────────────────────
+function borderStyle(state) { return BRD_CSS[state] || BRD_CSS[BRD_GRID]; }
+
+function applyCellBorders(td, bd) {
+  td.style.borderTop    = borderStyle(bd.top);
+  td.style.borderRight   = borderStyle(bd.right);
+  td.style.borderBottom  = borderStyle(bd.bottom);
+  td.style.borderLeft    = borderStyle(bd.left);
+}
+
+function render() {
+  const t = document.getElementById('grid-table');
+  t.innerHTML = '';
+
+  const thead = t.createTHead();
+  const hr = thead.insertRow();
+  const cn = hr.insertCell();
+  cn.className = 'corner';
+  for (let j=0;j<C;j++) {
+    const th = document.createElement('td');
+    th.className = 'col-header';
+    th.textContent = String.fromCharCode(65+j);
+    hr.appendChild(th);
+  }
+
+  const tbody = t.createTBody();
+  for (let i=0;i<R;i++) {
+    const tr = tbody.insertRow();
+    const rn = tr.insertCell();
+    rn.className = 'row-num';
+    rn.textContent = i+1;
+
+    for (let j=0;j<C;j++) {
+      if (!cellVisible(i,j)) continue;
+      const td = tr.insertCell();
+      td.dataset.r = i; td.dataset.c = j;
+
+      const cd = D[i][j];
+      const bd = BD[i][j];
+      const mo = getMergeOrigin(i,j);
+
+      // Class list (alignment, formatting)
+      const cls = [
+        cd.align==='center'?'align-center':cd.align==='right'?'align-right':'align-left',
+        cd.bold?'bold':'', cd.italic?'italic':'', cd.underline?'underline':'',
+        (document.getElementById('opt-hdr').checked&&i===0)?'header-row':'',
+      ].filter(Boolean).join(' ');
+      td.className = cls;
+
+      // Merge spans
+      if (mo) {
+        if (mo.rs>1) td.rowSpan = mo.rs;
+        if (mo.cs>1) td.colSpan = mo.cs;
+      }
+
+      // Apply border styles from BD state
+      applyCellBorders(td, bd);
+
+      // Custom colors
+      if (cd.fg) td.style.color = cd.fg;
+      if (cd.bg) td.style.backgroundColor = cd.bg;
+
+      // Selection
+      const inSel = sel.r1>=0 &&
+        i>=Math.min(sel.r1,sel.r2)&&i<=Math.max(sel.r1,sel.r2)&&
+        j>=Math.min(sel.c1,sel.c2)&&j<=Math.max(sel.c1,sel.c2);
+      if (inSel) td.classList.add('selected');
+
+      // Content
+      const span = document.createElement('div');
+      span.className = 'cell-text';
+      span.textContent = cd.text||'';
+      td.appendChild(span);
+
+      // Border edit mode: edge hit zones + border indicators
+      if (borderEditMode) {
+        // For merged cells, determine actual edge columns/rows
+        const lastCol = mo ? Math.min(j + (mo.cs||1) - 1, C-1) : j;
+        const lastRow = mo ? Math.min(i + (mo.rs||1) - 1, R-1) : i;
+
+        ['top','bottom','left','right'].forEach(function(side) {
+          // indicator: shows current border state
+          const bi = document.createElement('div');
+          bi.className = 'bi bi-' + side + ' ' + (bd[side]===BRD_THICK?'bi-on':'bi-off');
+          if (bd[side]===BRD_HIDDEN) { /* already has bi-off */ }
+          else if (bd[side]===BRD_GRID) { bi.style.opacity='0.3'; }
+          td.appendChild(bi);
+
+          // clickable edge zone
+          const bez = document.createElement('div');
+          bez.className = 'be be-' + side;
+          (function(rr,cc,ss,lr,lc) {
+            bez.addEventListener('mousedown', function(e) {
+              e.stopPropagation();
+              snap();
+              // Cycle: grid(1) -> thick(2) -> hidden(0) -> grid(1)
+              const cur = BD[rr][cc][ss];
+              if (cur === BRD_THICK) BD[rr][cc][ss] = BRD_HIDDEN;
+              else if (cur === BRD_HIDDEN) BD[rr][cc][ss] = BRD_GRID;
+              else BD[rr][cc][ss] = BRD_THICK;
+              // Propagate to adjacent cell's opposite edge
+              if (ss==='top' && rr>0 && BD[rr-1] && BD[rr-1][cc]) BD[rr-1][cc].bottom = BD[rr][cc][ss];
+              if (ss==='bottom' && lr<R-1 && BD[lr+1] && BD[lr+1][cc]) BD[lr+1][cc].top = BD[rr][cc][ss];
+              if (ss==='left' && cc>0 && BD[rr][cc-1]) BD[rr][cc-1].right = BD[rr][cc][ss];
+              if (ss==='right' && lc<C-1 && BD[rr][lc+1]) BD[rr][lc+1].left = BD[rr][cc][ss];
+              render();
+            });
+          })(i,j,side,lastRow,lastCol);
+          td.appendChild(bez);
+        });
+      }
+
+      // Events (closure to capture i,j)
+      (function(rr,cc) {
+        td.addEventListener('mousedown', function(e) {
+          if (e.button!==0) return;
+          if (editCell) commitEdit();
+          sel = {r1:rr,c1:cc,r2:rr,c2:cc};
+          dragging = true;
+          updateSelInfo();
+          highlightSel();
+        });
+        td.addEventListener('mouseenter', function() {
+          if (!dragging) return;
+          sel.r2=rr; sel.c2=cc;
+          updateSelInfo();
+          highlightSel();
+        });
+        td.addEventListener('dblclick', function(e) {
+          e.preventDefault();
+          startEdit(rr,cc);
+        });
+      })(i,j);
+    }
+  }
+}
+
+document.addEventListener('mouseup', function() { dragging=false; });
+
+function highlightSel() {
+  const t = document.getElementById('grid-table');
+  if (!t.tBodies||!t.tBodies[0]) return;
+  const tbody = t.tBodies[0];
+  for (let i=0;i<tbody.rows.length;i++) {
+    for (let k=1;k<tbody.rows[i].cells.length;k++) {
+      const td = tbody.rows[i].cells[k];
+      const r=parseInt(td.dataset.r), c=parseInt(td.dataset.c);
+      if (isNaN(r)||isNaN(c)) continue;
+      const inSel = sel.r1>=0&&
+        r>=Math.min(sel.r1,sel.r2)&&r<=Math.max(sel.r1,sel.r2)&&
+        c>=Math.min(sel.c1,sel.c2)&&c<=Math.max(sel.c1,sel.c2);
+      if (inSel) td.classList.add('selected');
+      else td.classList.remove('selected');
+    }
+  }
+}
+
+function startEdit(r,c) {
+  commitEdit();
+  editCell = {r,c};
+  const td = getCell(r,c);
+  if (!td) return;
+  td.classList.add('editing');
+  td.classList.remove('selected');
+  td.innerHTML = '';
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = D[r][c].text;
+  td.appendChild(inp);
+  inp.focus();
+  inp.select();
+  inp.addEventListener('keydown', function(e) {
+    if (e.key==='Enter'||e.key==='Tab') {
+      e.preventDefault(); commitEdit();
+      if (e.key==='Tab') {
+        const nc = e.shiftKey?c-1:c+1;
+        if (nc>=0&&nc<C) { sel={r1:r,c1:nc,r2:r,c2:nc}; updateSelInfo(); render(); }
+      } else {
+        const nr = r+1;
+        if (nr<R) { sel={r1:nr,c1:c,r2:nr,c2:c}; updateSelInfo(); render(); }
+      }
+    }
+    if (e.key==='Escape') { editCell=null; render(); }
+  });
+  inp.addEventListener('blur', function() {
+    if (editCell&&editCell.r===r&&editCell.c===c) commitEdit();
+  });
+}
+
+function commitEdit() {
+  if (!editCell) return;
+  const {r,c} = editCell;
+  const td = getCell(r,c);
+  if (td) {
+    const inp = td.querySelector('input');
+    if (inp&&inp.value!==D[r][c].text) { snap(); D[r][c].text=inp.value; }
+  }
+  editCell = null;
+  render();
+}
+
+function getCell(r,c) {
+  const tb = document.getElementById('grid-table').tBodies[0];
+  if (!tb||!tb.rows[r]) return null;
+  let idx=1;
+  for (let j=0;j<=c;j++) {
+    if (!cellVisible(r,j)) continue;
+    if (j===c) break;
+    idx++;
+  }
+  return tb.rows[r].cells[idx]||null;
+}
+
+function updateSelInfo() {
+  const {r1,c1,r2,c2}=sel;
+  if (r1<0) { document.getElementById('sel-info').textContent='No selection'; return; }
+  const R1=Math.min(r1,r2),R2=Math.max(r1,r2),C1=Math.min(c1,c2),C2=Math.max(c1,c2);
+  document.getElementById('sel-info').textContent = `R${R1+1}\u2013${R2+1}, ${String.fromCharCode(65+C1)}\u2013${String.fromCharCode(65+C2)}`;
+}
+
+// ── Format ────────────────────────────────────────────
+function toggleFmt(type) { commitEdit(); snap(); const {r1,c1,r2,c2}=selRange(); for(let i=r1;i<=r2;i++) for(let j=c1;j<=c2;j++) D[i][j][type]=!D[i][j][type]; render(); }
+function setAlign(align) { commitEdit(); snap(); const {r1,c1,r2,c2}=selRange(); for(let i=r1;i<=r2;i++) for(let j=c1;j<=c2;j++) D[i][j].align=align; render(); }
+
+document.getElementById('fg-color').addEventListener('input', function(e) { commitEdit(); snap(); const {r1,c1,r2,c2}=selRange(); for(let i=r1;i<=r2;i++) for(let j=c1;j<=c2;j++) D[i][j].fg=e.target.value; render(); });
+document.getElementById('bg-color').addEventListener('input', function(e) { commitEdit(); snap(); const {r1,c1,r2,c2}=selRange(); for(let i=r1;i<=r2;i++) for(let j=c1;j<=c2;j++) D[i][j].bg=e.target.value; render(); });
+function clearColors() { commitEdit(); snap(); const {r1,c1,r2,c2}=selRange(); for(let i=r1;i<=r2;i++) for(let j=c1;j<=c2;j++){D[i][j].fg='';D[i][j].bg='';} render(); toast('Colors cleared'); }
+
+function toggleBorderEdit() {
+  borderEditMode = !borderEditMode;
+  document.getElementById('btn-border-edit').classList.toggle('active', borderEditMode);
+  document.getElementById('grid-container').classList.toggle('border-edit-active', borderEditMode);
+  render();
+  toast(borderEditMode ? 'Border edit mode ON \u2013 click cell edges' : 'Border edit mode OFF');
+}
+
+// ── Borders ───────────────────────────────────────────
+function setBorders(type) {
+  commitEdit(); snap();
+  const {r1,c1,r2,c2}=selRange();
+  for (let i=r1;i<=r2;i++) for (let j=c1;j<=c2;j++) {
+    if (type==='all')     { BD[i][j].top=BRD_THICK; BD[i][j].right=BRD_THICK; BD[i][j].bottom=BRD_THICK; BD[i][j].left=BRD_THICK; }
+    else if (type==='h')  { BD[i][j].top=BRD_THICK; BD[i][j].bottom=BRD_THICK; }
+    else if (type==='v')  { BD[i][j].right=BRD_THICK; BD[i][j].left=BRD_THICK; }
+    else if (type==='none'){ BD[i][j].top=BRD_HIDDEN; BD[i][j].right=BRD_HIDDEN; BD[i][j].bottom=BRD_HIDDEN; BD[i][j].left=BRD_HIDDEN; }
+  }
+  render(); toast('Borders updated');
+}
+
+// ── Insert / Remove ───────────────────────────────────
+function insRow(where) {
+  commitEdit(); snap();
+  const {r1,r2}=selRange();
+  const pos = where==='above'?r1:r2+1;
+  D.splice(pos,0,Array.from({length:C},()=>({text:'',align:'left',bold:false,italic:false,underline:false,fg:'',bg:''})));
+  BD.splice(pos,0,Array.from({length:C},()=>({top:BRD_GRID,right:BRD_GRID,bottom:BRD_GRID,left:BRD_GRID})));
+  R++;
+  const nm={};
+  for (const [key,m] of Object.entries(merges)) { const [mr,mc]=key.split(',').map(Number); if(mr>=pos) nm[(mr+1)+','+mc]=m; else if(mr+m.rs>pos){m.rs++;nm[key]=m;} else nm[key]=m; }
+  merges=nm;
+  render(); toast('Row inserted');
+}
+
+function rmRow() {
+  if (R<=1) return; commitEdit(); snap();
+  const {r1,r2}=selRange(); const cnt=r2-r1+1;
+  if (cnt>=R) { init(1,C); toast('Row removed'); return; }
+  D.splice(r1,cnt); BD.splice(r1,cnt);
+  R-=cnt; if(R<1)R=1;
+  const nm={};
+  for (const [key,m] of Object.entries(merges)) { const [mr,mc]=key.split(',').map(Number); if(mr+m.rs<=r1) nm[key]=m; else if(mr>=r2+1) nm[(mr-cnt)+','+mc]=m; }
+  merges=nm;
+  sel={r1:-1,c1:-1,r2:-1,c2:-1};
+  render(); toast('Row removed');
+}
+
+function insCol(where) {
+  commitEdit(); snap();
+  const {c1,c2}=selRange();
+  const pos = where==='left'?c1:c2+1;
+  for(let i=0;i<R;i++){D[i].splice(pos,0,{text:'',align:'left',bold:false,italic:false,underline:false,fg:'',bg:''});BD[i].splice(pos,0,{top:BRD_GRID,right:BRD_GRID,bottom:BRD_GRID,left:BRD_GRID});}
+  C++;
+  const nm={};
+  for (const [key,m] of Object.entries(merges)) { const [mr,mc]=key.split(',').map(Number); if(mc>=pos) nm[mr+','+(mc+1)]=m; else if(mc+m.cs>pos){m.cs++;nm[key]=m;} else nm[key]=m; }
+  merges=nm;
+  render(); toast('Column inserted');
+}
+
+function rmCol() {
+  if (C<=1) return; commitEdit(); snap();
+  const {c1,c2}=selRange(); const cnt=c2-c1+1;
+  if (cnt>=C) { init(R,1); toast('Column removed'); return; }
+  for(let i=0;i<R;i++){D[i].splice(c1,cnt);BD[i].splice(c1,cnt);}
+  C-=cnt; if(C<1)C=1;
+  const nm={};
+  for (const [key,m] of Object.entries(merges)) { const [mr,mc]=key.split(',').map(Number); if(mc+m.cs<=c1) nm[key]=m; else if(mc>=c2+1) nm[mr+','+(mc-cnt)]=m; }
+  merges=nm;
+  sel={r1:-1,c1:-1,r2:-1,c2:-1};
+  render(); toast('Column removed');
+}
+
+function moveRow(dir) {
+  commitEdit(); snap(); const {r1,r2}=selRange(); if(r1!==r2) return toast('Select a single row'); const r=r1;
+  if(dir==='up'&&r===0) return; if(dir==='down'&&r===R-1) return;
+  const sw=dir==='up'?r-1:r+1;
+  [D[r],D[sw]]=[D[sw],D[r]]; [BD[r],BD[sw]]=[BD[sw],BD[r]];
+  const nm={}; for(const [key,m] of Object.entries(merges)){const[mr,mc]=key.split(',').map(Number);let nr=mr;if(mr===r)nr=sw;else if(mr===sw)nr=r;nm[nr+','+mc]=m;} merges=nm;
+  sel={r1:sw,c1:0,r2:sw,c2:C-1}; render(); toast('Row moved');
+}
+
+function moveCol(dir) {
+  commitEdit(); snap(); const {c1,c2}=selRange(); if(c1!==c2) return toast('Select a single column'); const c=c1;
+  if(dir==='left'&&c===0) return; if(dir==='right'&&c===C-1) return;
+  const sw=dir==='left'?c-1:c+1;
+  for(let i=0;i<R;i++){[D[i][c],D[i][sw]]=[D[i][sw],D[i][c]];[BD[i][c],BD[i][sw]]=[BD[i][sw],BD[i][c]];}
+  const nm={}; for(const [key,m] of Object.entries(merges)){const[mr,mc]=key.split(',').map(Number);let nc=mc;if(mc===c)nc=sw;else if(mc===sw)nc=c;nm[mr+','+nc]=m;} merges=nm;
+  sel={r1:0,c1:sw,r2:R-1,c2:sw}; render(); toast('Column moved');
+}
+
+// ── Table ops ──────────────────────────────────────────
+function clearContent() { snap(); for(let i=0;i<R;i++) for(let j=0;j<C;j++) D[i][j].text=''; render(); toast('Table cleared'); }
+
+function clearFmt() {
+  snap();
+  for(let i=0;i<R;i++) for(let j=0;j<C;j++) {
+    D[i][j].align='left'; D[i][j].bold=false; D[i][j].italic=false; D[i][j].underline=false; D[i][j].fg=''; D[i][j].bg='';
+    BD[i][j]={top:BRD_GRID,right:BRD_GRID,bottom:BRD_GRID,left:BRD_GRID};
+  }
+  merges={}; render(); toast('Formatting cleared');
+}
+
+function transpose() {
+  snap();
+  const nd=Array.from({length:C},(_,j)=>Array.from({length:R},(_,i)=>({...D[i][j]})));
+  // Remap borders: old top->new left, old right->new top, old bottom->new right, old left->new bottom
+  const nb=Array.from({length:C},(_,j)=>Array.from({length:R},(_,i)=>{
+    const ob=BD[i][j];
+    return {top:ob.left, right:ob.top, bottom:ob.right, left:ob.bottom};
+  }));
+  [R,C]=[C,R]; D=nd; BD=nb; merges={};
+  render(); toast('Table transposed');
+}
+
+// ── Merge / Split ─────────────────────────────────────
+function mergeCells() {
+  commitEdit(); snap(); const {r1,c1,r2,c2}=selRange();
+  if(r1===r2&&c1===c2) return toast('Select multiple cells');
+  for(let i=r1;i<=r2;i++) for(let j=c1;j<=c2;j++) removeMergeAt(i,j);
+  merges[r1+','+c1]={rs:r2-r1+1,cs:c2-c1+1};
+  render(); toast('Cells merged');
+}
+
+function splitCell() {
+  commitEdit(); snap(); const {r1,c1}=selRange();
+  const o=getMergeOrigin(r1,c1); if(!o) return toast('Cell is not merged');
+  delete merges[o.r+','+o.c]; render(); toast('Cell split');
+}
+
+// ── Resize ─────────────────────────────────────────────
+function resizeTbl() {
+  const r=parseInt(document.getElementById('new-rows').value)||4;
+  const c=parseInt(document.getElementById('new-cols').value)||4;
+  init(r,c); closeModal('modal-new'); toast('Table resized to '+r+'\u00d7'+c);
+}
+
+// ── Example ────────────────────────────────────────────
+function makeExample() {
+  snap(); init(5,4);
+  const h=['Name','Score','Grade','Remarks'];
+  const d=[['Alice','95','A','Excellent'],['Bob','82','B','Good'],['Carol','78','C','Average'],['David','91','A\u2212','Very Good']];
+  h.forEach((v,j)=>{D[0][j].text=v;D[0][j].bold=true;D[0][j].align='center';});
+  d.forEach((row,i)=>row.forEach((v,j)=>{D[i+1][j].text=v;D[i+1][j].align=j===0?'left':'center';}));
+  // booktabs-style: thick top, thick header bottom, thick last-row bottom
+  for(let j=0;j<C;j++) {
+    BD[0][j].top=BRD_THICK;
+    BD[0][j].bottom=BRD_THICK;
+    BD[R-1][j].bottom=BRD_THICK;
+  }
+  render(); toast('Example table created');
+}
+
+// ── Import / Export ────────────────────────────────────
+function importCSV() { document.getElementById('csv-file').click(); }
+function handleCSV(e) { const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=ev=>{parseCSV(ev.target.result);e.target.value='';}; rd.readAsText(f); }
+function parseCSV(txt) {
+  const lines=txt.trim().split('\n').map(l=>l.split(',').map(v=>v.trim().replace(/^"|"$/g,'')));
+  const r=lines.length,c=Math.max(...lines.map(l=>l.length));
+  snap(); init(r,c); lines.forEach((line,i)=>line.forEach((v,j)=>{if(D[i]&&D[i][j])D[i][j].text=v;})); render(); toast('CSV imported');
+}
+function importPaste() {
+  const txt=document.getElementById('paste-input').value; if(!txt.trim()) return;
+  const lines=txt.trim().split('\n').map(l=>l.split(/\t|,/).map(v=>v.trim()));
+  const r=lines.length,c=Math.max(...lines.map(l=>l.length));
+  snap(); init(r,c); lines.forEach((line,i)=>line.forEach((v,j)=>{if(D[i]&&D[i][j])D[i][j].text=v;}));
+  document.getElementById('paste-input').value=''; closeModal('modal-paste'); render(); toast('Data imported');
+}
+function importLatex() {
+  const code=document.getElementById('latex-input').value; if(!code.trim()) return;
+  const m=code.match(/\\begin\{tabular\}\{([^}]*)\}([\s\S]*?)\\end\{tabular\}/);
+  if(!m){toast('Could not parse LaTeX table');return;}
+  const body=m[2];
+  const rows=body.split('\\\\').map(r=>r.trim().replace(/\\hline|\\toprule|\\midrule|\\bottomrule/g,'').trim()).filter(r=>r);
+  const data=rows.map(r=>r.split('&').map(c=>c.trim()));
+  const rC=data.length,cC=Math.max(...data.map(r=>r.length));
+  snap(); init(rC,cC); data.forEach((row,i)=>row.forEach((v,j)=>{if(D[i]&&D[i][j])D[i][j].text=v;}));
+  document.getElementById('latex-input').value=''; closeModal('modal-latex'); render(); toast('LaTeX table imported');
+}
+function dlCSV() {
+  const csv=D.map(row=>row.map(c=>'"'+c.text.replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='table.csv'; a.click();
+}
+function doFindRep() {
+  const f=document.getElementById('find-text').value,r=document.getElementById('rep-text').value; if(!f) return;
+  snap(); let cnt=0; for(let i=0;i<R;i++) for(let j=0;j<C;j++){if(D[i][j].text.includes(f)){D[i][j].text=D[i][j].text.replaceAll(f,r);cnt++;}}
+  render(); closeModal('modal-find'); toast('Replaced in '+cnt+' cell'+(cnt!==1?'s':''));
+}
+
+// ── LaTeX Generation ──────────────────────────────────
+function generate() {
+  commitEdit();
+  const style=document.getElementById('tbl-style').value;
+  const hdr=document.getElementById('opt-hdr').checked;
+  const ctr=document.getElementById('opt-ctr').checked;
+  const addCap=document.getElementById('opt-cap').checked;
+  const addLbl=document.getElementById('opt-lbl').checked;
+  const esc=document.getElementById('opt-esc').checked;
+  const cmp=document.getElementById('opt-cmp').checked;
+  const smt=document.getElementById('opt-smt').checked;
+  const capTxt=document.getElementById('cap-txt').value;
+  const lblTxt=document.getElementById('lbl-txt').value||'tab:mytable';
+
+  const escFn = s => esc
+    ? s.replace(/\{/g,'\\{').replace(/\}/g,'\\}').replace(/\\/g,'\\textbackslash ').replace(/%/g,'\\%').replace(/&/g,'\\&').replace(/_/g,'\\_').replace(/#/g,'\\#').replace(/\$/g,'\\$')
+    : s;
+
+  // Column spec: check if ANY cell in column j has thick left or right border
+  const colSpec = D[0].map((cd,j) => {
+    let hasLeftBar = false, hasRightBar = false;
+    for (let i=0;i<R;i++) {
+      if (!cellVisible(i,j)) continue;
+      if (BD[i][j].left === BRD_THICK) hasLeftBar = true;
+      if (BD[i][j].right === BRD_THICK) hasRightBar = true;
+    }
+    const al = cd.align==='center'?'c':cd.align==='right'?'r':'l';
+    return (hasLeftBar?'|':'') + al + (j===C-1&&hasRightBar?'|':'');
+  }).join('');
+
+  // Check if last column needs right bar
+  let trailingBar = '';
+  for (let i=0;i<R;i++) if(cellVisible(i,C-1)&&BD[i][C-1].right===BRD_THICK) trailingBar='|';
+  const fullColSpec = colSpec + (trailingBar&&!colSpec.endsWith('|')?'|':'');
+
+  // Smart formatting column widths
+  const colWidths=Array(C).fill(0);
+  if (smt) { for(let j=0;j<C;j++) for(let i=0;i<R;i++){if(!cellVisible(i,j)) continue; let v=D[i][j].text; if(D[i][j].bold)v='\\textbf{'+v+'}'; if(D[i][j].italic)v='\\textit{'+v+'}'; colWidths[j]=Math.max(colWidths[j],v.length);} }
+  function pad(text,ci) { if(!smt) return text; while(text.length<colWidths[ci]) text+=' '; return text; }
+
+  const lines=[];
+  const wrap=addCap||ctr;
+  if(wrap) lines.push('\\begin{table}[h!]');
+  if(ctr) lines.push('\\centering');
+  if(addCap&&capTxt) lines.push('\\caption{'+capTxt+'}');
+  if(addLbl) lines.push('\\label{'+lblTxt+'}');
+  lines.push('\\begin{tabular}{'+fullColSpec+'}');
+
+  // Check if first row has thick top border
+  let firstRowTopThick = false;
+  for(let j=0;j<C;j++) if(cellVisible(0,j)&&BD[0][j].top===BRD_THICK) firstRowTopThick=true;
+
+  if(style==='booktabs') { if(firstRowTopThick) lines.push('\\toprule'); }
+  else { if(firstRowTopThick) lines.push('\\hline'); }
+
+  for (let i=0;i<R;i++) {
+    if(i>0&&!cellVisible(i,0)) continue;
+    const cells=[];
+    for(let j=0;j<C;j++){
+      if(!cellVisible(i,j)) continue;
+      let v=escFn(D[i][j].text);
+      if(D[i][j].bold&&D[i][j].italic) v='\\textbf{\\textit{'+v+'}}';
+      else if(D[i][j].bold) v='\\textbf{'+v+'}';
+      else if(D[i][j].italic) v='\\textit{'+v+'}';
+      cells.push(pad(v,j));
+    }
+    lines.push(cells.join(cmp?'&':' & ')+' \\\\');
+
+    // Check if this row has thick bottom border
+    let hasThickBot = false;
+    for(let j=0;j<C;j++) if(cellVisible(i,j)&&BD[i][j].bottom===BRD_THICK) hasThickBot=true;
+
+    const isHdr=hdr&&i===0;
+    const isLast=i===R-1;
+
+    if(style==='booktabs') {
+      if(isHdr) lines.push('\\midrule');
+      else if(hasThickBot) lines.push('\\midrule');
+      if(isLast) lines.push('\\bottomrule');
+    } else {
+      if(isHdr||hasThickBot) lines.push('\\hline');
+    }
+  }
+
+  lines.push('\\end{tabular}');
+  if(wrap) lines.push('\\end{table}');
+
+  const raw=lines.join('\n');
+  const hi=raw
+    .replace(/\\(begin|end|tabular|table|centering|caption|label|toprule|midrule|bottomrule|hline|textbf|textit|textbackslash)/g,'<span class="hl-cmd">\\$1</span>')
+    .replace(/\{([^}]*)\}/g,(m,p1)=>'{<span class="hl-str">'+p1+'</span>}')
+    .replace(/(\\\\)/g,'<span class="hl-brace">\\\\</span>');
+
+  document.getElementById('latex-output').innerHTML=hi;
+  toast('LaTeX generated!');
+}
+
+function copyLatex() {
+  const el=document.getElementById('latex-output'); const txt=el.innerText||el.textContent;
+  if(!txt||txt.includes('Click')) return;
+  navigator.clipboard.writeText(txt).then(()=>toast('Copied to clipboard!'));
+}
+
+// ── Modal / Dropdown / Toast ──────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(function(m){ m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open');}); });
+
+function toggleDD(id) { document.querySelectorAll('.dropdown').forEach(function(d){if(d.id!==id)d.classList.remove('open');}); document.getElementById(id).classList.toggle('open'); }
+document.addEventListener('click',function(e){ if(!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown').forEach(function(d){d.classList.remove('open');}); });
+
+let toastT;
+function toast(msg) { const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2000); }
+
+document.getElementById('opt-cap').addEventListener('change',function(e){ document.getElementById('cap-row').style.display=e.target.checked?'flex':'none'; });
+document.getElementById('opt-lbl').addEventListener('change',function(e){ document.getElementById('lbl-row').style.display=e.target.checked?'flex':'none'; });
+document.getElementById('opt-hdr').addEventListener('change',function(){ render(); });
+
+document.addEventListener('keydown',function(e) {
+  if(e.ctrlKey||e.metaKey){ if(e.key==='z'){e.preventDefault();doUndo();} if(e.key==='y'){e.preventDefault();doRedo();} if(e.key==='n'&&!e.shiftKey){e.preventDefault();openModal('modal-new');} }
+  if(!editCell&&sel.r1>=0){
+    let nr=sel.r1,nc=sel.c1;
+    if(e.key==='ArrowUp'){nr=Math.max(0,nr-1);e.preventDefault();}
+    if(e.key==='ArrowDown'){nr=Math.min(R-1,nr+1);e.preventDefault();}
+    if(e.key==='ArrowLeft'){nc=Math.max(0,nc-1);e.preventDefault();}
+    if(e.key==='ArrowRight'){nc=Math.min(C-1,nc+1);e.preventDefault();}
+    if(nr!==sel.r1||nc!==sel.c1){sel={r1:nr,c1:nc,r2:nr,c2:nc};updateSelInfo();highlightSel();}
+    if(e.key==='Delete'){commitEdit();snap();const sr=selRange();for(let i=sr.r1;i<=sr.r2;i++) for(let j=sr.c1;j<=sr.c2;j++) D[i][j].text='';render();}
+  }
+  if(e.key==='Enter'&&!editCell&&sel.r1>=0){e.preventDefault();startEdit(sel.r1,sel.c1);}
+});
+
+document.querySelectorAll('.format-nav button').forEach(function(btn,idx){
+  btn.addEventListener('click',function(){ document.querySelectorAll('.format-nav button').forEach(function(b){b.classList.remove('active');}); btn.classList.add('active'); if(idx!==0)toast(btn.textContent+' format coming soon'); });
+});
+
+// ── Bootstrap ──────────────────────────────────────────
+init(4,4);
+makeExample();
+generate();
+</script>
+</body>
+</html>
