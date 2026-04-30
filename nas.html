@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Architecture Search — The Algorithmic Search for Structure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #050506;
+    --bg-steel: #0a0a0e;
+    --bg-card: #101014;
+    --bg-elevated: #16161a;
+    --accent: #d46b1e;
+    --accent-glow: rgba(212, 107, 30, 0.25);
+    --accent-dim: rgba(212, 107, 30, 0.1);
+    --teal: #2ec4b6;
+    --teal-glow: rgba(46, 196, 182, 0.25);
+    --cool-gray: #6a6864;
+    --text-primary: #e8e6e3;
+    --text-secondary: #9a9590;
+    --text-muted: #5a5652;
+    --border: #1e1e24;
+    --border-light: #2a2a32;
+    --font-display: 'Chakra Petch', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    overflow-x: hidden;
+    line-height: 1.6;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Atmosphere */
+  .bg-atmosphere {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+  .bg-atmosphere::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 1000px 700px at 15% 20%, rgba(212, 107, 30, 0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 800px 900px at 85% 80%, rgba(46, 196, 182, 0.03) 0%, transparent 70%),
+      radial-gradient(ellipse 500px 500px at 50% 50%, rgba(100, 100, 110, 0.03) 0%, transparent 60%);
+  }
+  .grain-overlay {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+  }
+  .mesh-grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 80px 80px;
+    background-position: center top;
+    opacity: 0.15;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  }
+
+  .content-wrap { position: relative; z-index: 2; }
+
+  /* Navigation */
+  nav {
+    position: fixed; top: 0; width: 100%; z-index: 100;
+    padding: 1.25rem 2.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(12px);
+    background: rgba(5, 5, 6, 0.6);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.4s, background 0.4s;
+  }
+  nav.scrolled {
+    border-bottom-color: var(--border);
+    background: rgba(5, 5, 6, 0.85);
+  }
+  .nav-logo {
+    font-family: var(--font-display); font-size: 1.3rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-primary);
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    color: var(--text-secondary); text-decoration: none; font-size: 0.75rem;
+    font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+    transition: color 0.3s; position: relative;
+  }
+  .nav-links a::after {
+    content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1px;
+    background: var(--accent); transition: width 0.3s;
+  }
+  .nav-links a:hover { color: var(--text-primary); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* Reveals */
+  .reveal {
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .stagger-1 { transition-delay: 0.05s; }
+  .stagger-2 { transition-delay: 0.1s; }
+  .stagger-3 { transition-delay: 0.15s; }
+  .stagger-4 { transition-delay: 0.2s; }
+  .stagger-5 { transition-delay: 0.25s; }
+
+  /* Section base */
+  .section {
+    padding: 7rem 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-label {
+    font-family: var(--font-display); font-size: 0.75rem; letter-spacing: 0.25em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500;
+  }
+  .section-title {
+    font-family: var(--font-display); font-size: clamp(2.4rem, 5vw, 4rem);
+    font-weight: 700; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.02em;
+    margin-bottom: 1.5rem; max-width: 800px;
+  }
+  .section-body {
+    font-size: 1rem; color: var(--text-secondary); max-width: 640px;
+    line-height: 1.75; font-weight: 300;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh; display: flex; align-items: center;
+    position: relative; padding: 7rem 2.5rem 5rem;
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: 1fr 1.2fr;
+    gap: 4rem; max-width: 1300px; width: 100%; margin: 0 auto;
+    align-items: center;
+  }
+  .hero-eyebrow {
+    font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 0.3em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500;
+  }
+  .hero-title {
+    font-family: var(--font-display); font-size: clamp(3rem, 6.5vw, 6rem);
+    font-weight: 700; line-height: 0.95; text-transform: uppercase; letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+  }
+  .hero-title .line2 { color: var(--text-muted); }
+  .hero-sub {
+    font-size: 1rem; color: var(--text-secondary); max-width: 420px;
+    line-height: 1.7; font-weight: 300; margin-bottom: 2rem;
+  }
+  .hero-stats { display: flex; gap: 2.5rem; margin-top: 2.5rem; }
+  .hero-stat-val {
+    font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; color: var(--text-primary);
+    line-height: 1; letter-spacing: -0.02em;
+  }
+  .hero-stat-label {
+    font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.15em; margin-top: 0.5rem; font-weight: 500;
+  }
+
+  /* Hero Canvas container */
+  .hero-canvas-wrap {
+    position: relative; width: 100%; height: 480px;
+    border: 1px solid var(--border); border-radius: 16px;
+    background: var(--bg-card); overflow: hidden;
+  }
+  .hero-canvas-wrap::before {
+    content: ''; position: absolute; inset: 0; border-radius: 16px;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.6); pointer-events: none; z-index: 2;
+  }
+  .canvas-overlay-label {
+    position: absolute; top: 1rem; left: 1rem;
+    font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.15em; z-index: 3;
+    text-transform: uppercase; background: var(--bg-steel); padding: 0.25rem 0.5rem; border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .canvas-overlay-metrics {
+    position: absolute; bottom: 1rem; right: 1rem; text-align: right; z-index: 3;
+    font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.05em;
+  }
+
+  /* Introduction */
+  .intro-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; margin-top: 3rem;
+  }
+  .intro-term {
+    border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;
+    background: var(--bg-card); transition: border-color 0.3s, transform 0.3s;
+  }
+  .intro-term:hover {
+    border-color: var(--border-light); transform: translateY(-2px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  .intro-term h4 {
+    font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 0.5rem; color: var(--text-primary);
+  }
+  .intro-term p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+  .intro-term .metric {
+    font-family: var(--font-display); font-size: 1.5rem; color: var(--teal); margin-top: 1rem; display: inline-block;
+  }
+
+  /* Cell Builder */
+  .builder-wrap {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem; align-items: start; margin-top: 3rem;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem;
+  }
+  .builder-stage { position: relative; min-height: 380px; }
+  .builder-stage svg { width: 100%; height: 100%; display: block; }
+  .node-group { cursor: pointer; }
+  .node-circle {
+    fill: var(--bg-elevated); stroke: var(--border-light); stroke-width: 2; transition: all 0.3s;
+  }
+  .node-group:hover .node-circle { stroke: var(--accent); fill: var(--accent-dim); }
+  .node-group.selected .node-circle { stroke: var(--accent); fill: rgba(212, 107, 30, 0.15); }
+  .node-label {
+    fill: var(--text-secondary); font-family: var(--font-mono); font-size: 10px; text-anchor: middle;
+    pointer-events: none; user-select: none;
+  }
+  .edge-line {
+    stroke: var(--border-light); stroke-width: 2; fill: none; cursor: pointer; transition: stroke 0.3s, stroke-width 0.3s;
+  }
+  .edge-line:hover { stroke: var(--text-muted); }
+  .edge-line.active { stroke: var(--accent); stroke-width: 3; }
+  .edge-line.active-teal { stroke: var(--teal); stroke-width: 3; }
+
+  .builder-sidebar h4 {
+    font-family: var(--font-display); font-size: 1rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;
+  }
+  .builder-stat {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 0; border-bottom: 1px solid var(--border);
+  }
+  .builder-stat-label { font-size: 0.8rem; color: var(--text-secondary); }
+  .builder-stat-val { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-primary); }
+  .builder-stat-val.score { color: var(--accent); font-weight: 600; }
+  .builder-json-preview {
+    background: var(--bg-deep); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem; margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-secondary);
+    font-family: var(--font-mono); line-height: 1.5; white-space: pre-wrap; overflow-x: auto;
+  }
+  .builder-controls { margin-top: 1.5rem; }
+  .op-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+    font-family: var(--font-mono); font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 6px;
+    cursor: pointer; transition: all 0.2s; margin-right: 0.5rem; margin-bottom: 0.5rem;
+  }
+  .op-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+  .op-btn.active { background: var(--accent); color: var(--bg-deep); border-color: var(--accent); font-weight: 600; }
+
+  /* Search Strategies */
+  .strat-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 3rem; }
+  .strat-item {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; transition: border-color 0.3s;
+  }
+  .strat-item:hover { border-color: var(--border-light); }
+  .strat-item.active { border-color: var(--accent); }
+  .strat-header {
+    display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem 2rem;
+    cursor: pointer; user-select: none;
+  }
+  .strat-num {
+    font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--text-muted);
+    min-width: 2.5rem; text-align: center;
+  }
+  .strat-title { font-family: var(--font-display); font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .strat-arrow {
+    margin-left: auto; color: var(--text-muted); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .strat-item.active .strat-arrow { transform: rotate(90deg); color: var(--accent); }
+  .strat-content {
+    max-height: 0; overflow: hidden; transition: max-height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .strat-item.active .strat-content { max-height: 500px; }
+  .strat-body {
+    padding: 0 2rem 2rem 6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center;
+  }
+  .strat-body p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; }
+  .strat-viz {
+    background: var(--bg-deep); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; min-height: 160px; display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .viz-grid-dots {
+    display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;
+  }
+  .viz-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--border-light); transition: background 0.4s, box-shadow 0.4s;
+  }
+  .viz-dot.lit { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+  .viz-dot.lit-teal { background: var(--teal); box-shadow: 0 0 8px var(--teal-glow); }
+
+  /* Search Simulation */
+  .sim-wrap {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 2rem; margin-top: 3rem; position: relative; overflow: hidden;
+  }
+  .sim-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .sim-title { font-family: var(--font-display); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .sim-controls { display: flex; gap: 0.75rem; align-items: center; }
+  .sim-btn {
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary);
+    font-family: var(--font-mono); font-size: 0.75rem; padding: 0.5rem 1.2rem; border-radius: 6px;
+    cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sim-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+  .sim-btn.primary { background: var(--accent); color: var(--bg-deep); border-color: var(--accent); font-weight: 600; }
+  .sim-btn.primary:hover { filter: brightness(1.1); }
+  .sim-canvas-container {
+    position: relative; width: 100%; height: 420px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg-deep); overflow: hidden;
+  }
+  .sim-legend {
+    display: flex; gap: 1.5rem; justify-content: center; margin-top: 1rem;
+    font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .sim-legend span { display: flex; align-items: center; gap: 0.4rem; }
+  .sim-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border); padding: 4rem 2.5rem 3rem; text-align: center;
+  }
+  footer p { color: var(--text-muted); font-size: 0.8rem; }
+
+  /* Responsive */
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero-canvas-wrap { height: 350px; }
+    .intro-grid { grid-template-columns: 1fr; }
+    .builder-wrap { grid-template-columns: 1fr; }
+    .strat-body { grid-template-columns: 1fr; padding: 0 1.5rem 1.5rem; }
+    .section { padding: 5rem 1.5rem; }
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+  }
+  @media (max-width: 500px) {
+    .hero-stats { flex-direction: column; gap: 1.5rem; }
+    .sim-header { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-atmosphere"></div>
+<div class="mesh-grid"></div>
+<div class="grain-overlay"></div>
+
+<div class="content-wrap">
+
+  <!-- Navigation -->
+  <nav id="navbar">
+    <div class="nav-logo">Neural<span>Arch</span>Search</div>
+    <ul class="nav-links">
+      <li><a href="#intro">Concept</a></li>
+      <li><a href="#builder">Cell Builder</a></li>
+      <li><a href="#strategies">Strategies</a></li>
+      <li><a href="#simulation">Simulation</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="reveal">
+        <div class="hero-eyebrow">Automated Machine Learning</div>
+        <h1 class="hero-title">The Search<br>for <span style="color:var(--accent)">Structure</span></h1>
+        <p class="hero-sub">
+          Neural Architecture Search (NAS) uses algorithms to automatically discover optimal neural network designs, replacing manual engineering with systematic exploration of vast design spaces.
+        </p>
+        <div class="hero-stats">
+          <div>
+            <div class="hero-stat-val" id="heroStatParams">—</div>
+            <div class="hero-stat-label">Parameters searched</div>
+          </div>
+          <div>
+            <div class="hero-stat-val" id="heroStatAcc">—</div>
+            <div class="hero-stat-label">Best accuracy</div>
+          </div>
+          <div>
+            <div class="hero-stat-val" id="heroStatArch">—</div>
+            <div class="hero-stat-label">Architectures tried</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-canvas-wrap reveal stagger-2">
+        <div class="canvas-overlay-label">Live Search Visualization</div>
+        <canvas id="heroCanvas"></canvas>
+        <div class="canvas-overlay-metrics">
+          <div>SEARCH_SPACE_DIM: 10^28</div>
+          <div id="heroMetricFitness">FITNESS: —</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Introduction -->
+  <section class="section" id="intro">
+    <div class="section-label reveal">01 / The Problem</div>
+    <h2 class="section-title reveal">Why Search for<br>Architecture?</h2>
+    <p class="section-body reveal">
+      Designing neural networks is traditionally a manual, intuition-driven process. NAS reframes this as an optimization problem: given a dataset and a set of constraints, algorithmically find the topology, depth, width, and connectivity that maximize predictive performance.
+    </p>
+
+    <div class="intro-grid">
+      <div class="intro-term reveal stagger-1">
+        <h4>Search Space</h4>
+        <p>The universe of all possible architectures. Defined by operations (convolutions, pooling) and connectivity patterns (chains, DAGs, cells).</p>
+        <div class="metric" id="statSearchSpace">10^28</div>
+      </div>
+      <div class="intro-term reveal stagger-2">
+        <h4>Search Strategy</h4>
+        <p>The algorithm navigating the space. RL agents, evolutionary algorithms, or gradient descent on continuous relaxations.</p>
+        <div class="metric" id="statStrategies">3</div>
+      </div>
+      <div class="intro-term reveal stagger-3">
+        <h4>Performance Estimation</h4>
+        <p>How to evaluate a candidate architecture without training to convergence. Proxy tasks, weight sharing, and one-shot methods reduce cost.</p>
+        <div class="metric" id="statProxy">10x</div>
+      </div>
+      <div class="intro-term reveal stagger-4">
+        <h4>Result</h4>
+        <p>A discovered architecture that often outperforms hand-designed counterparts, with fewer parameters and lower latency.</p>
+        <div class="metric" id="statResult">SOTA</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cell Builder -->
+  <section class="section" id="builder">
+    <div class="section-label reveal">02 / The Cell</div>
+    <h2 class="section-title reveal">Interactive<br>Cell Builder</h2>
+    <p class="section-body reveal">
+      Modern NAS often searches for repeatable "cells" or blocks that are stacked to form a full network. Build your own cell by selecting operations for each node and toggling connections.
+    </p>
+
+    <div class="builder-wrap reveal">
+      <div class="builder-stage">
+        <svg id="cellSvg" viewBox="0 0 400 360">
+          <!-- Edges -->
+          <path d="M 70 60 Q 130 120 190 180" class="edge-line active" data-from="input" data-to="n1" />
+          <path d="M 70 300 Q 130 240 190 180" class="edge-line" data-from="input" data-to="n1" />
+          <path d="M 70 60 Q 200 120 330 180" class="edge-line" data-from="input" data-to="n2" />
+          <path d="M 190 180 Q 260 120 330 180" class="edge-line active" data-from="n1" data-to="n2" />
+          <path d="M 190 180 Q 200 280 330 300" class="edge-line" data-from="n1" data-to="output" />
+          <path d="M 330 180 Q 330 240 330 300" class="edge-line active" data-from="n2" data-to="output" />
+
+          <!-- Nodes -->
+          <g class="node-group" data-node="input" transform="translate(70,60)" onclick="selectNode('input')">
+            <circle r="26" class="node-circle" />
+            <text class="node-label" y="4">INPUT</text>
+          </g>
+          <g class="node-group" data-node="input2" transform="translate(70,300)" onclick="selectNode('input2')">
+            <circle r="26" class="node-circle" />
+            <text class="node-label" y="4">INPUT</text>
+          </g>
+          <g class="node-group selected" data-node="n1" transform="translate(190,180)" onclick="selectNode('n1')">
+            <circle r="30" class="node-circle" />
+            <text class="node-label" y="4">1</text>
+          </g>
+          <g class="node-group" data-node="n2" transform="translate(330,180)" onclick="selectNode('n2')">
+            <circle r="30" class="node-circle" />
+            <text class="node-label" y="4">2</text>
+          </g>
+          <g class="node-group" data-node="output" transform="translate(330,300)" onclick="selectNode('output')">
+            <circle r="26" class="node-circle" />
+            <text class="node-label" y="4">OUT</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="builder-sidebar">
+        <h4>Node Inspector</h4>
+        <div id="builderInspector">
+          <div class="builder-stat">
+            <span class="builder-stat-label">Selected Node</span>
+            <span class="builder-stat-val" id="biNode">Node 1</span>
+          </div>
+          <div class="builder-stat">
+            <span class="builder-stat-label">Operation</span>
+            <span class="builder-stat-val" id="biOp">Conv 3x3</span>
+          </div>
+          <div class="builder-stat">
+            <span class="builder-stat-label">Parameters</span>
+            <span class="builder-stat-val" id="biParams">14.7K</span>
+          </div>
+          <div class="builder-stat">
+            <span class="builder-stat-label">Estimated Accuracy</span>
+            <span class="builder-stat-val score" id="biAcc">94.2%</span>
+          </div>
+        </div>
+
+        <div class="builder-controls" id="opControls">
+          <button class="op-btn active" data-op="conv3x3" onclick="setOp('conv3x3')">Conv 3×3</button>
+          <button class="op-btn" data-op="conv5x5" onclick="setOp('conv5x5')">Conv 5×5</button>
+          <button class="op-btn" data-op="maxpool" onclick="setOp('maxpool')">Max Pool 3×3</button>
+          <button class="op-btn" data-op="avgpool" onclick="setOp('avgpool')">Avg Pool 3×3</button>
+          <button class="op-btn" data-op="skip" onclick="setOp('skip')">Skip Connect</button>
+          <button class="op-btn" data-op="sep5" onclick="setOp('sep5')">Sep Conv 5×5</button>
+        </div>
+
+        <div class="builder-json-preview" id="jsonPreview">{
+  "cell": {
+    "node1": "conv3x3",
+    "node2": "conv3x3",
+    "edges": [
+      ["input", "node1"],
+      ["node1", "node2"],
+      ["node2", "output"]
+    ]
+  }
+}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Strategies -->
+  <section class="section" id="strategies">
+    <div class="section-label reveal">03 / Methods</div>
+    <h2 class="section-title reveal">Search<br>Strategies</h2>
+    <p class="section-body reveal">
+      The choice of search strategy defines how the algorithm explores the combinatorial space of architectures. Each method balances exploration, exploitation, and computational cost differently.
+    </p>
+
+    <div class="strat-list">
+      <div class="strat-item active" onclick="toggleStrat(this)">
+        <div class="strat-header">
+          <div class="strat-num">01</div>
+          <div class="strat-title">Reinforcement Learning</div>
+          <div class="strat-arrow">→</div>
+        </div>
+        <div class="strat-content">
+          <div class="strat-body">
+            <p>
+              A controller RNN generates architecture descriptions (strings) sampled from a learned policy. Each generated architecture is trained and evaluated. The resulting validation accuracy serves as the reward signal, updating the controller via policy gradient (REINFORCE). Over time, the controller learns to generate higher-performing architectures.
+            </p>
+            <div class="strat-viz" id="vizRL">
+              <div class="viz-grid-dots" id="rlDots"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="strat-item" onclick="toggleStrat(this)">
+        <div class="strat-header">
+          <div class="strat-num">02</div>
+          <div class="strat-title">Evolutionary Algorithms</div>
+          <div class="strat-arrow">→</div>
+        </div>
+        <div class="strat-content">
+          <div class="strat-body">
+            <p>
+              Starting from a population of simple architectures, evolutionary methods apply mutations (add/remove layers, change operations) and crossovers. Only the fittest survive to the next generation. This mimics natural selection, gradually evolving complex, high-performing networks without gradient-based optimization.
+            </p>
+            <div class="strat-viz" id="vizEvo">
+              <div class="viz-grid-dots" id="evoDots"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="strat-item" onclick="toggleStrat(this)">
+        <div class="strat-header">
+          <div class="strat-num">03</div>
+          <div class="strat-title">Gradient-Based (DARTS)</div>
+          <div class="strat-arrow">→</div>
+        </div>
+        <div class="strat-content">
+          <div class="strat-body">
+            <p>
+              Differentiable Architecture Search (DARTS) relaxs the discrete search space into a continuous one by placing a mixture of candidate operations on each edge. Architecture weights (alphas) and network weights are optimized jointly via gradient descent. After convergence, the strongest operations are selected to form the final discrete architecture.
+            </p>
+            <div class="strat-viz" id="vizGrad">
+              <div class="viz-grid-dots" id="gradDots"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Simulation -->
+  <section class="section" id="simulation">
+    <div class="section-label reveal">04 / Live Demo</div>
+    <h2 class="section-title reveal">Search Space<br>Simulation</h2>
+    <p class="section-body reveal">
+      Explore how different search strategies navigate the architecture space. Each point represents a candidate architecture. Watch as the algorithm evaluates architectures, discovers the Pareto frontier, and converges on high-performing designs.
+    </p>
+
+    <div class="sim-wrap reveal">
+      <div class="sim-header">
+        <div class="sim-title">Architecture Search Visualization</div>
+        <div class="sim-controls">
+          <select class="sim-btn" id="simMode" style="background:var(--bg-elevated);appearance:none;padding-right:2rem;">
+            <option>Random Search</option>
+            <option>Evolutionary</option>
+            <option>Policy Gradient</option>
+          </select>
+          <button class="sim-btn primary" id="simStartBtn" onclick="startSim()">Start Search</button>
+          <button class="sim-btn" onclick="resetSim()">Reset</button>
+        </div>
+      </div>
+      <div class="sim-canvas-container">
+        <canvas id="simCanvas"></canvas>
+      </div>
+      <div class="sim-legend">
+        <span><i style="background:var(--border-light)"></i> Unevaluated</span>
+        <span><i style="background:var(--accent)"></i> Evaluated</span>
+        <span><i style="background:var(--teal)"></i> Pareto Frontier</span>
+        <span><i style="background:#e8e6e3"></i> Best Found</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>Neural Architecture Search — An interactive educational experience</p>
+  </footer>
+</div>
+
+<script>
+/* ============================
+   HERO CANVAS: Living Network
+   ============================ */
+const heroCanvas = document.getElementById('heroCanvas');
+const heroCtx = heroCanvas.getContext('2d');
+let heroW, heroH;
+
+function resizeHero() {
+  const rect = heroCanvas.parentElement.getBoundingClientRect();
+  heroCanvas.width = rect.width;
+  heroCanvas.height = rect.height;
+  heroW = rect.width;
+  heroH = rect.height;
+}
+resizeHero();
+window.addEventListener('resize', resizeHero);
+
+const nodes = [];
+const NODE_COUNT = 40;
+for (let i = 0; i < NODE_COUNT; i++) {
+  nodes.push({
+    x: Math.random() * heroW,
+    y: Math.random() * heroH,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 2 + 1.5,
+    active: Math.random() > 0.7,
+  });
+}
+
+let searchAgent = { x: heroW * 0.1, y: heroH * 0.5, target: null, trail: [], t: 0 };
+function pickNewTarget() {
+  const activeNodes = nodes.filter(n => n.active);
+  searchAgent.target = activeNodes[Math.floor(Math.random() * activeNodes.length)];
+  searchAgent.t = 0;
+}
+pickNewTarget();
+
+function drawHero() {
+  heroCtx.clearRect(0, 0, heroW, heroH);
+  // Subtle grid
+  heroCtx.strokeStyle = 'rgba(30,30,36,0.4)';
+  heroCtx.lineWidth = 0.5;
+  const gs = 40;
+  for (let x = 0; x < heroW; x += gs) { heroCtx.beginPath(); heroCtx.moveTo(x, 0); heroCtx.lineTo(x, heroH); heroCtx.stroke(); }
+  for (let y = 0; y < heroH; y += gs) { heroCtx.beginPath(); heroCtx.moveTo(0, y); heroCtx.lineTo(heroW, y); heroCtx.stroke(); }
+
+  // Update nodes
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    if (n.x < 0 || n.x > heroW) n.vx *= -1;
+    if (n.y < 0 || n.y > heroH) n.vy *= -1;
+  });
+
+  // Draw connections between active nearby nodes
+  heroCtx.lineWidth = 0.8;
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 120 && a.active && b.active) {
+        heroCtx.strokeStyle = `rgba(212,107,30,${0.15 * (1 - d / 120)})`;
+        heroCtx.beginPath(); heroCtx.moveTo(a.x, a.y); heroCtx.lineTo(b.x, b.y); heroCtx.stroke();
+      }
+    }
+  }
+
+  // Draw nodes
+  nodes.forEach(n => {
+    heroCtx.fillStyle = n.active ? 'rgba(212,107,30,0.85)' : 'rgba(100,100,110,0.3)';
+    heroCtx.beginPath(); heroCtx.arc(n.x, n.y, n.r, 0, Math.PI * 2); heroCtx.fill();
+    if (n.active) {
+      heroCtx.shadowColor = 'rgba(212,107,30,0.5)';
+      heroCtx.shadowBlur = 10;
+      heroCtx.beginPath(); heroCtx.arc(n.x, n.y, n.r + 1, 0, Math.PI * 2); heroCtx.fill();
+      heroCtx.shadowBlur = 0;
+    }
+  });
+
+  // Move agent
+  if (searchAgent.target) {
+    searchAgent.t += 0.015;
+    const t = searchAgent.target;
+    const dx = t.x - searchAgent.x;
+    const dy = t.y - searchAgent.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 4 || searchAgent.t > 1.5) pickNewTarget();
+    searchAgent.x += dx * 0.03;
+    searchAgent.y += dy * 0.03;
+    searchAgent.trail.push({ x: searchAgent.x, y: searchAgent.y, life: 1 });
+    if (searchAgent.trail.length > 40) searchAgent.trail.shift();
+  }
+
+  // Draw trail
+  for (let i = 0; i < searchAgent.trail.length - 1; i++) {
+    const p = searchAgent.trail[i];
+    p.life -= 0.02;
+    if (p.life <= 0) continue;
+    const next = searchAgent.trail[i + 1];
+    heroCtx.strokeStyle = `rgba(46,196,182,${p.life * 0.6})`;
+    heroCtx.lineWidth = 2;
+    heroCtx.beginPath(); heroCtx.moveTo(p.x, p.y); heroCtx.lineTo(next.x, next.y); heroCtx.stroke();
+  }
+
+  // Draw agent
+  heroCtx.fillStyle = '#e8e6e3';
+  heroCtx.shadowColor = 'rgba(46,196,182,0.6)';
+  heroCtx.shadowBlur = 14;
+  heroCtx.beginPath(); heroCtx.arc(searchAgent.x, searchAgent.y, 4, 0, Math.PI * 2); heroCtx.fill();
+  heroCtx.shadowBlur = 0;
+
+  // Update metrics
+  if (Math.random() > 0.9) {
+    const fit = (0.85 + Math.random() * 0.14).toFixed(4);
+    document.getElementById('heroMetricFitness').textContent = `FITNESS: ${fit}`;
+  }
+
+  requestAnimationFrame(drawHero);
+}
+drawHero();
+
+/* Animate hero stats */
+function animCount(elId, end, suffix, duration = 2000) {
+  const el = document.getElementById(elId);
+  let start = 0; const startTime = performance.now();
+  function tick(now) {
+    const p = Math.min((now - startTime) / duration, 1);
+    const val = Math.floor(p * end);
+    el.textContent = val.toLocaleString() + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+setTimeout(() => { animCount('heroStatParams', 4700000, ''); }, 800);
+setTimeout(() => { animCount('heroStatAcc', 97, '.4%'); }, 1100);
+setTimeout(() => { animCount('heroStatArch', 1247, ''); }, 1400);
+
+
+/* ============================
+   CELL BUILDER LOGIC
+   ============================ */
+const operations = {
+  input: { name: 'Input Tensor', params: 0, acc: 0 },
+  input2: { name: 'Input Tensor', params: 0, acc: 0 },
+  output: { name: 'Output Sum', params: 0, acc: 0 },
+  conv3x3: { name: 'Conv 3×3', params: 14700, acc: 0.8 },
+  conv5x5: { name: 'Conv 5×5', params: 39200, acc: 1.2 },
+  maxpool: { name: 'Max Pool 3×3', params: 0, acc: -0.3 },
+  avgpool: { name: 'Avg Pool 3×3', params: 0, acc: -0.2 },
+  skip: { name: 'Skip Connect', params: 0, acc: 0.1 },
+  sep5: { name: 'Sep Conv 5×5', params: 9800, acc: 0.5 },
+};
+
+const cellState = {
+  n1: 'conv3x3', n2: 'conv3x3',
+  edges: [
+    { from: 'input', to: 'n1', active: true },
+    { from: 'input2', to: 'n1', active: false },
+    { from: 'input', to: 'n2', active: false },
+    { from: 'n1', to: 'n2', active: true },
+    { from: 'n1', to: 'output', active: false },
+    { from: 'n2', to: 'output', active: true },
+  ]
+};
+
+let selectedNodeId = 'n1';
+
+function updateBuilderUI() {
+  document.querySelectorAll('.node-group').forEach(g => {
+    g.classList.toggle('selected', g.dataset.node === selectedNodeId);
+  });
+  const opKey = cellState[selectedNodeId] || 'input';
+  const op = operations[opKey];
+  document.getElementById('biNode').textContent = selectedNodeId.toUpperCase();
+  document.getElementById('biOp').textContent = op.name;
+  document.getElementById('biParams').textContent = op.params > 0 ? (op.params / 1000).toFixed(1) + 'K' : '—';
+
+  document.querySelectorAll('.op-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.op === opKey);
+  });
+
+  // Compute fake score
+  let totalAcc = 90.0;
+  let totalParams = 0;
+  ['n1','n2'].forEach(nid => {
+    const ok = cellState[nid];
+    totalAcc += operations[ok].acc;
+    totalParams += operations[ok].params;
+  });
+  // Edge complexity bonus
+  const activeEdges = cellState.edges.filter(e => e.active).length;
+  totalAcc += (activeEdges - 2) * 0.15;
+  totalAcc = Math.min(99.9, Math.max(85, totalAcc));
+  document.getElementById('biAcc').textContent = totalAcc.toFixed(1) + '%';
+
+  // JSON preview
+  const edgeList = cellState.edges.filter(e => e.active).map(e => `["${e.from}", "${e.to}"]`);
+  document.getElementById('jsonPreview').textContent = `{
+  "cell": {
+    "node1": "${cellState.n1}",
+    "node2": "${cellState.n2}",
+    "edges": [
+      ${edgeList.join(',\n      ')}
+    ]
+  }
+}`;
+}
+
+function selectNode(id) {
+  if (id === 'input' || id === 'input2' || id === 'output') return;
+  selectedNodeId = id;
+  updateBuilderUI();
+}
+
+function setOp(op) {
+  if (selectedNodeId === 'input' || selectedNodeId === 'input2' || selectedNodeId === 'output') return;
+  cellState[selectedNodeId] = op;
+  updateBuilderUI();
+}
+
+// Edge click handling via SVG paths
+function getEdgeIndex(path) {
+  const from = path.dataset.from;
+  const to = path.dataset.to;
+  // simple match by from+to, not robust for multiple edges but works for demo
+  return cellState.edges.findIndex(e => e.from === from && e.to === to);
+}
+document.querySelectorAll('.edge-line').forEach(path => {
+  path.addEventListener('click', (e) => {
+    const idx = getEdgeIndex(e.target);
+    if (idx !== -1) {
+      cellState.edges[idx].active = !cellState.edges[idx].active;
+      e.target.classList.toggle('active', cellState.edges[idx].active);
+      updateBuilderUI();
+    }
+  });
+});
+
+updateBuilderUI();
+
+
+/* ============================
+   STRATEGIES VIZ
+   ============================ */
+function toggleStrat(item) {
+  const wasActive = item.classList.contains('active');
+  document.querySelectorAll('.strat-item').forEach(i => i.classList.remove('active'));
+  if (!wasActive) item.classList.add('active');
+}
+
+function buildDotGrid(containerId, count) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = 'viz-dot';
+    c.appendChild(d);
+  }
+  return c.querySelectorAll('.viz-dot');
+}
+
+const rlDots = buildDotGrid('rlDots', 64);
+const evoDots = buildDotGrid('evoDots', 64);
+const gradDots = buildDotGrid('gradDots', 64);
+
+function animateDots(dots, mode) {
+  if (!dots) return;
+  dots.forEach((d, i) => {
+    setTimeout(() => {
+      d.classList.remove('lit', 'lit-teal');
+      const r = Math.random();
+      if (r > 0.6) d.classList.add(mode === 'grad' ? 'lit-teal' : 'lit');
+    }, i * 30 + Math.random() * 400);
+  });
+}
+
+function loopViz() {
+  if (document.querySelector('.strat-item.active')) {
+    const active = document.querySelector('.strat-item.active');
+    const idx = Array.from(document.querySelectorAll('.strat-item')).indexOf(active);
+    if (idx === 0) animateDots(rlDots, 'rl');
+    if (idx === 1) animateDots(evoDots, 'evo');
+    if (idx === 2) animateDots(gradDots, 'grad');
+  }
+  setTimeout(loopViz, 2500);
+}
+setTimeout(loopViz, 1000);
+
+
+/* ============================
+   SIMULATION CANVAS
+   ============================ */
+const simCanvas = document.getElementById('simCanvas');
+const simCtx = simCanvas.getContext('2d');
+let simW, simH;
+
+function resizeSim() {
+  const rect = simCanvas.parentElement.getBoundingClientRect();
+  simCanvas.width = rect.width;
+  simCanvas.height = rect.height;
+  simW = rect.width;
+  simH = rect.height;
+}
+resizeSim();
+window.addEventListener('resize', resizeSim);
+
+// Generate random architectures: x=FLOPs, y=Accuracy
+const archPoints = [];
+for (let i = 0; i < 180; i++) {
+  const flops = Math.random() * (simW || 800);
+  // accuracy roughly inverse to flops with noise
+  const baseAcc = 85 + 10 * Math.exp(-flops / ((simW || 800) * 0.4));
+  const acc = baseAcc + (Math.random() - 0.5) * 6;
+  archPoints.push({ x: flops, y: acc, evaluated: false, frontier: false, best: false });
+}
+
+let simRunning = false;
+let simIndex = 0;
+let simInterval = null;
+let simBestAcc = -Infinity;
+let simBestIdx = -1;
+
+function drawSim() {
+  simCtx.fillStyle = '#050506';
+  simCtx.fillRect(0, 0, simW, simH);
+
+  // Axes
+  simCtx.strokeStyle = '#1e1e24'; simCtx.lineWidth = 1;
+  simCtx.beginPath(); simCtx.moveTo(40, simH - 30); simCtx.lineTo(simW - 20, simH - 30); simCtx.stroke();
+  simCtx.beginPath(); simCtx.moveTo(40, simH - 30); simCtx.lineTo(40, 20); simCtx.stroke();
+
+  // Labels
+  simCtx.fillStyle = '#5a5652'; simCtx.font = '10px JetBrains Mono';
+  simCtx.fillText('Computational Cost (FLOPs) →', simW - 180, simH - 10);
+  simCtx.save(); simCtx.translate(15, simH / 2); simCtx.rotate(-Math.PI / 2);
+  simCtx.fillText('Accuracy →', 0, 0); simCtx.restore();
+
+  // Map accuracy to Y: 80-100 => simH-30 to 20
+  function accY(a) { return (simH - 30) - ((a - 78) / 24) * (simH - 50); }
+
+  // Points
+  archPoints.forEach(p => {
+    const py = accY(p.y);
+    if (py < 0 || py > simH) return;
+    simCtx.beginPath();
+    simCtx.arc(p.x + 40, py, p.best ? 5 : p.frontier ? 4 : 3, 0, Math.PI * 2);
+    if (p.best) {
+      simCtx.fillStyle = '#e8e6e3';
+      simCtx.shadowColor = 'rgba(232,232,227,0.5)'; simCtx.shadowBlur = 12;
+      simCtx.fill(); simCtx.shadowBlur = 0;
+    } else if (p.frontier) {
+      simCtx.fillStyle = '#2ec4b6';
+      simCtx.fill();
+    } else if (p.evaluated) {
+      simCtx.fillStyle = '#d46b1e';
+      simCtx.fill();
+    } else {
+      simCtx.fillStyle = 'rgba(30,30,36,0.6)';
+      simCtx.fill();
+    }
+  });
+
+  // Draw Pareto line
+  const frontierPoints = archPoints.filter(p => p.frontier).sort((a, b) => a.x - b.x);
+  if (frontierPoints.length > 1) {
+    simCtx.strokeStyle = 'rgba(46,196,182,0.5)'; simCtx.lineWidth = 2;
+    simCtx.beginPath();
+    frontierPoints.forEach((p, i) => {
+      const py = accY(p.y);
+      if (i === 0) simCtx.moveTo(p.x + 40, py);
+      else simCtx.lineTo(p.x + 40, py);
+    });
+    simCtx.stroke();
+  }
+
+  requestAnimationFrame(drawSim);
+}
+drawSim();
+
+function computePareto() {
+  // Reset
+  archPoints.forEach(p => { p.frontier = false; p.best = false; });
+  const evaluated = archPoints.filter(p => p.evaluated).sort((a, b) => a.x - b.x);
+  if (evaluated.length === 0) return;
+  let maxAcc = -Infinity;
+  const frontier = [];
+  for (const p of evaluated) {
+    if (p.y > maxAcc) {
+      maxAcc = p.y;
+      p.frontier = true;
+      frontier.push(p);
+    }
+  }
+  if (frontier.length > 0) {
+    const best = frontier.reduce((a, b) => (a.y > b.y ? a : b));
+    best.best = true;
+  }
+}
+
+function startSim() {
+  if (simRunning) return;
+  simRunning = true;
+  document.getElementById('simStartBtn').textContent = 'Searching...';
+  const mode = document.getElementById('simMode').value;
+  const speed = mode === 'Random Search' ? 40 : mode === 'Evolutionary' ? 80 : 25;
+
+  simInterval = setInterval(() => {
+    if (simIndex >= archPoints.length) {
+      clearInterval(simInterval); simRunning = false;
+      document.getElementById('simStartBtn').textContent = 'Start Search';
+      return;
+    }
+    // Evaluate next batch
+    const batchSize = mode === 'Random Search' ? 1 : mode === 'Evolutionary' ? 2 : 3;
+    for (let b = 0; b < batchSize && simIndex < archPoints.length; b++, simIndex++) {
+      archPoints[simIndex].evaluated = true;
+      if (archPoints[simIndex].y > simBestAcc) {
+        simBestAcc = archPoints[simIndex].y;
+        simBestIdx = simIndex;
+      }
+    }
+    computePareto();
+  }, speed);
+}
+
+function resetSim() {
+  clearInterval(simInterval); simRunning = false; simIndex = 0; simBestAcc = -Infinity; simBestIdx = -1;
+  archPoints.forEach(p => { p.evaluated = false; p.frontier = false; p.best = false; });
+  document.getElementById('simStartBtn').textContent = 'Start Search';
+}
+
+
+/* ============================
+   SCROLL REVEAL & NAV
+   ============================ */
+const nav = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 40) nav.classList.add('scrolled');
+  else nav.classList.remove('scrolled');
+});
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+</script>
+</body>
+</html>
